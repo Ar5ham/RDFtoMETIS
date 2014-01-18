@@ -258,12 +258,12 @@ public class Partitioner {
 				String s = subNode.isURI() ? subNode.getURI() : subNode.getBlankNodeLabel();
 				
 				final Node objNode = triple.getObject();
-				String o = objNode.isURI() ? objNode.getURI() : objNode.getBlankNodeLabel();
+				
 				
 				int subId; 
 				
 				if(!useHashPartitioning)
-				{
+				{	
 					subId = getId(s); 
 					
 					/* subId is integer between 1..n where n is number of nodes in a graph
@@ -276,6 +276,7 @@ public class Partitioner {
 					
 					if(objNode.isURI() || objNode.isBlank())
 					{
+						String o = objNode.isURI() ? objNode.getURI() : objNode.getBlankNodeLabel();
 						int objId = getId(o);
 						
 						/* **************************************************************************
@@ -332,6 +333,63 @@ public class Partitioner {
 		//No longer need the primary map, lets get rid of it
 		for (int i = 0; i < primary.length; i++) {
 			primary[i] = null; 
+		}
+		
+		
+		//TODO: Fix this for any # of hops 
+		
+		if( hops == 2)
+		{
+			System.out.println("calculating hop 2"); 
+
+			// this collects all nodes that are additionally replicated to this partition in this step
+			// at the end of this iteration, secondary will be merged with primary (to check if a node already exists in that partition),
+			// and this will become the new secondary
+			final TLongHashSet[] ternary = new TLongHashSet[numPartitions];
+			
+			for (int i = 0; i < ternary.length; i++) {
+				ternary[i] = new TLongHashSet(); 
+			}
+			
+			
+			//Let's read the all the graph files again.
+			for (int i = 0; i < args.length; i++) {
+				
+				final Iterator<Triple> it = useRiot ? 
+											RDFDataMgr.loadGraph(args[i]).find(Node.ANY, Node.ANY, Node.ANY) : 
+										    load(args[i]).iterator();
+				//Iterate though the graph
+				while (it.hasNext()) {
+					
+					final Triple triple = (Triple) it.next();
+					
+					final Node subNode  = triple.getSubject(); 
+					String s = subNode.isURI() ? subNode.getURI() : subNode.getBlankNodeLabel(); 
+					
+					final Node objNode = triple.getObject(); 
+					final String pred = triple.getPredicate().getURI(); 
+					
+					int id; 
+					
+					// we need to replicate this triple in the partition where SECONDARY contains the SUBJECT
+					// and where SECONDARY contains the OBJECT (for UNDIRECTED replication)
+					
+					
+					
+					
+					
+					
+				}
+				
+				
+				
+				
+			}// end for
+			
+			
+			
+			
+			
 		}
 
 
