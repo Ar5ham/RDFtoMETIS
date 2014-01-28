@@ -363,34 +363,96 @@ public class Partitioner {
 					
 					final Triple triple = (Triple) it.next();
 					
+					if (DEBUG)
+					{
+						System.out.println(triple.getSubject() + "; " + triple.getPredicate() + "; " + triple.getObject());
+					}
+					
+					
 					final Node subNode  = triple.getSubject(); 
 					String s = subNode.isURI() ? subNode.getURI() : subNode.getBlankNodeLabel(); 
 					
 					final Node objNode = triple.getObject(); 
 					final String pred = triple.getPredicate().getURI(); 
 					
-					int id; 
+					int subId; 
 					
 					// we need to replicate this triple in the partition where SECONDARY contains the SUBJECT
 					// and where SECONDARY contains the OBJECT (for UNDIRECTED replication)
 					
-					
-					
-					
-					
-					
-				}
-				
-				
-				
-				
+					if(useHashPartitioning == false)
+					{
+						subId = getId(s); 
+						
+						// Lets check the SECONDARY if secondary[x] contains the subject and x != the 
+						//Original partition for subject then we add it to that partition. 
+						
+						//int secPart = -1; 
+						
+						for (int x = 0; x < secondary.length; x++) {
+							
+							if(secondary[x].contains(Util.hash64(s)) && part[subId] != x )
+							{
+								// We add it to the partition
+								emit(files[x],triple);
+								
+								
+								//object got replicated here.
+								if (objNode.isURI()) 
+								{
+									ternary[x].add( Util.hash64(objNode.getURI()) );
+								}
+								else if (objNode.isBlank()) 
+								{
+									ternary[x].add( Util.hash64(objNode.getBlankNodeLabel()));
+								}
+
+							}
+						}//end for
+						
+						// For non-type s-->o's if the Object is a URI or Blank Node, get object id 
+						
+						
+						if (pred.contains("type") == false)
+						{
+							if ((objNode.isURI() || (objNode.isBlank())))
+							{
+								String o = objNode.isURI() ? objNode.getURI() : objNode.getBlankNodeLabel(); 
+								int objId = getId(o); 
+								
+								if ((useDirectHops == false) && (hops >= 1))
+								{
+									for (int x = 0; x < secondary.length; x++) 
+									{
+										
+										if (secondary[x].contains(Util.hash64(o)) && part[objId] != x )
+										{
+											emit(files[x], triple);
+											
+											//Subject got replicated here.
+											ternary[x].add(Util.hash64(s)); 
+										}
+									}//end for
+								}// end if
+							}//end if
+						}//end if	
+					}
+					else // useHashPartitioning
+					{
+						//TODO: Implement this later if needed.
+					}
+
+				}//end while
 			}// end for
 			
 			
-			
-			
-			
-		}
+			//replacing secondary with ternary 
+			for (int i = 0; i < secondary.length; i++)
+			{
+				secondary[i] = ternary[i];
+				ternary[i] = new TLongHashSet();
+			}
+		} // end if Hop == 2
 
 
 

@@ -30,7 +30,7 @@ import net.kotek.jdbm.DB;
 import net.kotek.jdbm.DBMaker;
 
 
-public class N3ToGraphConverter {
+public class N3ToGraphConverter_old {
 
 	private static final boolean DEBUG = true;
 
@@ -58,8 +58,8 @@ public class N3ToGraphConverter {
 	 */
 	private static final int THRESHOLD = 10;
 	
-	private static HashBiMap<Integer,Integer > G_edges  = HashBiMap.create ();
-	Multimap<Integer, Integer> G_mapping = HashMultimap.create(); 
+	//private static HashBiMap<Integer,Integer > G_edges  = HashBiMap.create ();
+	//Multimap<Integer, Integer> G_mapping = HashMultimap.create(); 
 	
 	// Keeping all the hashes for node lables
 	static TLongIntHashMap longhashes = new TLongIntHashMap();
@@ -140,7 +140,7 @@ public class N3ToGraphConverter {
 		if (usejdbm)
 		{
 			String fileName = "urimap";
-			DBMaker dbm=new DBMaker(fileName);
+			DBMaker dbm = new DBMaker(fileName);
 			dbm.enableHardCache();
 			dbm.disableTransactions();
 			db = dbm.build();
@@ -265,7 +265,6 @@ public class N3ToGraphConverter {
 	 * This method create a edges between nodes. 
 	 * No self loop nodes and all edges are undirected 
 	 * Foe Metis when there is an edge from s -> o there should be ab edge from o -> s as well
-	 * 
 	 * @param subj subject id
 	 * @param obj  object id 
 	 */
@@ -350,14 +349,15 @@ public class N3ToGraphConverter {
 	 */
 	private static final int getId(String s) {
 		
-		long hash = Util.hash64(s);
-		int id=longhashes.get(hash);
+		long hash = Util.hash64(s);		//Create hash of s 
+		int id = longhashes.get(hash);	// see if the hash already exist
 		if (id == 0)
 		{
 			id = max;
-			longhashes.put(hash,id);
+			longhashes.put(hash,id); 
+			if(usejdbm)
 			max++;
-//			if (max%10000==0) System.out.println(max+"\t"+hash+"\t"+s);
+			
 		}
 		return id;	
 	}
@@ -367,7 +367,7 @@ public class N3ToGraphConverter {
 	 */
 	private static void usage()
 	{
-		System.out.println("usage: " + N3ToGraphConverter.class.getName() + " (-r|-o) (-a|-t) file1.n3 [file2.n3 ...]");
+		System.out.println("usage: " + N3ToGraphConverter_old.class.getName() + " (-r|-o) (-a|-t) file1.n3 [file2.n3 ...]");
 		System.out.println("available options:\n==================");
 		System.out.println(" -r, --riot : use RiotLoader to load graph(s) (default)");
 		System.out.println(" -o, --own  : use own loader to load graph(s) (supports something like NTriples with types for literals)");
