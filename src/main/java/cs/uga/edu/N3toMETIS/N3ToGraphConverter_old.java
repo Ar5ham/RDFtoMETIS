@@ -355,7 +355,6 @@ public class N3ToGraphConverter_old {
 		{
 			id = max;
 			longhashes.put(hash,id); 
-			if(usejdbm)
 			max++;
 			
 		}
