@@ -28,9 +28,9 @@
 			<version>1.0.0</version>
 		</dependency>
 		<dependency>
-			<groupId>JDBM</groupId>
-			<artifactId>JDBM</artifactId>
-			<version>3.0-alpha2</version>
+			<groupId>org.apache.jdbm</groupId>
+			<artifactId>jdbm</artifactId>
+			<version>3.0-alpha4</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
