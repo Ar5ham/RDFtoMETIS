@@ -1,5 +1,12 @@
 package cs.uga.edu.N3toMETIS;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 import cs.uga.edu.util.Util;
@@ -118,6 +125,104 @@ public class MetisLoader {
 	 * @param args
 	 */
 	private static void perform(String[] args) {
+
+		Path path ;
+		Charset encoding = StandardCharsets.UTF_8; 
+
+		for (int i = 0; i < args.length; i++) {
+
+			path = Paths.get(args[i]); 
+			try (BufferedReader reader = Files.newBufferedReader(path, encoding)){
+				String line = null;
+				while ((line = reader.readLine()) != null) {
+					//process each line 
+				
+					line=line.substring(0, line.length() - 1).trim();
+					String triple[] = line.split("\\s+");
+					String subUri, objUri; 
+					Integer SubjId, objId; 
+					
+					
+					if(DEBUG)
+					{
+						System.out.println(line);
+					}
+					
+					if (triple.length < 3)
+					{
+						System.err.println("[" + path.getFileName() + "] ignore short line " + line);
+						continue;
+					}
+					else if (triple.length > 3)
+					{
+						for (int j = 3; j < triple.length; j++)
+							triple[2] += " " + triple[j];
+					}
+					
+					// Processing Subject String 
+					//if subject is URI
+					if (triple[0].startsWith("<") && triple[0].endsWith(">"))
+					{
+						subUri = triple[0].substring(1, triple[0].length() - 1);
+					}
+					else if (triple[0].startsWith("_:"))
+					{
+						// for anonymous 
+						subUri = triple[0].substring(2); 
+					}
+					else
+					{
+						System.err.println("[" + path.getFileName() + "] invalid subject " + triple[0] + ", skip.");
+						continue;
+					}
+					
+					if(DEBUG)
+					{
+						System.out.print(subUri + "--> ");
+					}
+					
+					SubjId = getId(subUri);
+					
+					// Processing Object String
+					if(triple[2].startsWith("<") && triple[2].endsWith(">"))
+					{
+						objUri = triple[2].substring(1, triple[2].length() - 1); 
+						
+					}
+					else if (triple[2].startsWith("_:"))
+					{
+						objUri = triple[2].substring(2); 
+					}
+					else
+					{
+						System.err.println("[" + path.getFileName() + "] invalid object " + triple[2]+", skip.");
+						continue;
+					}
+					
+					objId = getId(objUri); 
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+				}      
+			} catch (IOException e) {
+				System.err.println("ERROR: Failed to read the file " + args[i]);
+				e.printStackTrace();
+			}
+
+
+		}//End for
+
+
 
 	}
 
