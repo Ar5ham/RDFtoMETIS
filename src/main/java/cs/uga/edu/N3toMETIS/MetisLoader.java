@@ -1,6 +1,7 @@
 package cs.uga.edu.N3toMETIS;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -11,8 +12,11 @@ import java.util.Arrays;
 
 import cs.uga.edu.util.Util;
 import gnu.trove.TIntCollection;
+import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongIntHashMap;
+import gnu.trove.set.hash.TIntHashSet;
 
 public class MetisLoader {
 
@@ -134,20 +138,21 @@ public class MetisLoader {
 			path = Paths.get(args[i]); 
 			try (BufferedReader reader = Files.newBufferedReader(path, encoding)){
 				String line = null;
-				while ((line = reader.readLine()) != null) {
+				while ((line = reader.readLine()) != null) 
+				{
 					//process each line 
-				
+
 					line=line.substring(0, line.length() - 1).trim();
 					String triple[] = line.split("\\s+");
 					String subUri, objUri; 
-					Integer SubjId, objId; 
-					
-					
+					Integer SubjId, ObjId; 
+
+
 					if(DEBUG)
 					{
 						System.out.println(line);
 					}
-					
+
 					if (triple.length < 3)
 					{
 						System.err.println("[" + path.getFileName() + "] ignore short line " + line);
@@ -158,7 +163,7 @@ public class MetisLoader {
 						for (int j = 3; j < triple.length; j++)
 							triple[2] += " " + triple[j];
 					}
-					
+
 					// Processing Subject String 
 					//if subject is URI
 					if (triple[0].startsWith("<") && triple[0].endsWith(">"))
@@ -175,19 +180,19 @@ public class MetisLoader {
 						System.err.println("[" + path.getFileName() + "] invalid subject " + triple[0] + ", skip.");
 						continue;
 					}
-					
+
 					if(DEBUG)
 					{
-						System.out.print(subUri + "--> ");
+						System.out.print(subUri + " --> ");
 					}
-					
+
 					SubjId = getId(subUri);
-					
+
 					// Processing Object String
 					if(triple[2].startsWith("<") && triple[2].endsWith(">"))
 					{
 						objUri = triple[2].substring(1, triple[2].length() - 1); 
-						
+
 					}
 					else if (triple[2].startsWith("_:"))
 					{
@@ -198,32 +203,71 @@ public class MetisLoader {
 						System.err.println("[" + path.getFileName() + "] invalid object " + triple[2]+", skip.");
 						continue;
 					}
-					
-					objId = getId(objUri); 
-					
-					
-					
-					
-					
-					
+
+					if(DEBUG)
+					{
+						System.out.println(objUri);
+						
+					}
 					
 					
-					
-					
-					
-					
-					
+					ObjId = getId(objUri); 
+
+					addEdge(SubjId,ObjId);
 				}      
 			} catch (IOException e) {
 				System.err.println("ERROR: Failed to read the file " + args[i]);
 				e.printStackTrace();
 			}
-
-
 		}//End for
 
+		if(DEBUG){
+			System.out.println((max - 1 ) + " " + edgeCount); 
+		}
+		
+		//Create METIS input file
+		
+		File f = new File(outfile); 
+		try {
+			Util.stringToFile((max - 1 ) + " " + edgeCount, f, true);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		
+		int cnt  = 0; 
+		for (int i = 0; i < max; i++) {
 
+			StringBuilder sb = new StringBuilder();
 
+			TIntCollection l = edges.get(i);
+			//if mapping exist for this key
+			if(l != null)
+			{
+				cnt += l.size();
+				TIntIterator it = l.iterator();				
+				for (int k = l.size(); k > 0; k--)
+				{
+					sb.append(it.next()).append(" ");
+				}
+
+				//				while(it.hasNext())
+				//				{
+				//					sb.append(it.next()).append(" "); 
+				//					count ++ ;
+				//				}
+
+			}
+			System.out.println(sb.toString());
+			try {
+				Util.stringToFile(sb.append("\n").toString(), f, true);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+		}
+		
+		System.err.println(cnt + " edges.");
 	}
 
 
@@ -254,8 +298,59 @@ public class MetisLoader {
 	 */
 	private static void addEdge(int subj, int obj) {
 
+		// no self loops for the partitioning
+		if (subj == obj) 
+			return;
 
-	}
+		// TIntCollection is an interface, TIntArrayList is one of the implementing classes
+		// get the V with subj as a key if exist.
+		TIntCollection l =  edges.get(subj);
+
+		//Subject is not in the list
+		if (l == null)
+		{
+			// create an TIntArrayList of size 10.
+			l = new TIntArrayList(THRESHOLD);
+			//Add the subj and array list coresponding to obj ids to the map
+			edges.put(subj,l);
+		}
+
+		//if it is not null and doesnt contain the object id
+		if(!l.contains(obj))
+		{
+			l.add(obj);
+			if(l instanceof TIntArrayList && l.size() == THRESHOLD)
+			{
+				//TIntHashSet is also an implementation of TIntCollection interface
+				TIntHashSet hs = new TIntHashSet(l); 
+				// If the map previously contained a mapping for the key, the old value is replaced by the specified value
+				edges.put(subj, hs); 
+			}
+			edgeCount++;
+
+		}
+
+		//Now lets get the object
+		l = edges.get(obj);
+
+		if (l == null)
+		{
+			l = new TIntArrayList(THRESHOLD);
+			edges.put(obj,l);
+		}
+
+		if(! l.contains(subj))
+		{
+			l.add(subj);
+			//Don't need to add to the edgeCount here.
+			if(l instanceof TIntArrayList && l.size() == THRESHOLD)
+			{
+				TIntHashSet hs = new TIntHashSet(l); 
+				edges.put(obj, hs); 
+
+			}
+		}
+	} //End method
 
 
 

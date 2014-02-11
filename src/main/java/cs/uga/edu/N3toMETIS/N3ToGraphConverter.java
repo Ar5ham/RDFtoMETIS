@@ -173,7 +173,7 @@ public class N3ToGraphConverter {
 				Node subNode = triple.getSubject();
 				String s = subNode.isURI() ? subNode.getURI() : subNode.getBlankNodeLabel();
 				//Assign an id to the node
-				Integer SubjId= getId(s);
+				Integer SubjId = getId(s);
 
 				// NOTE: no mapping for predicates at this point 
 
@@ -265,7 +265,7 @@ public class N3ToGraphConverter {
 	/**************************************************************************
 	 * This method create a edges between nodes. 
 	 * No self loop nodes and all edges are undirected 
-	 * Foe Metis when there is an edge from s -> o there should be ab edge from o -> s as well
+	 * For Metis when there is an edge from s -> o there should be ab edge from o -> s as well
 	 * @param subj subject id
 	 * @param obj  object id 
 	 */
