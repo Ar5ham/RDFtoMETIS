@@ -2,7 +2,9 @@ package cs.uga.edu.N3toMETIS;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,6 +16,7 @@ import cs.uga.edu.util.Util;
 import gnu.trove.TIntCollection;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TLongIntMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
@@ -104,8 +107,13 @@ public class MetisLoader {
 					System.exit(1);
 				}
 
+				long startTime = System.nanoTime(); 
 				// if none of the above is true, the rest should be name of the input file(s)
 				perform(Arrays.copyOfRange(args, i, args.length));
+
+				long endTime = System.nanoTime(); 
+				System.out.println("Duration: " + (endTime - startTime) * 1.0e-9);
+
 				break;
 			}
 		}
@@ -207,10 +215,10 @@ public class MetisLoader {
 					if(DEBUG)
 					{
 						System.out.println(objUri);
-						
+
 					}
-					
-					
+
+
 					ObjId = getId(objUri); 
 
 					addEdge(SubjId,ObjId);
@@ -224,17 +232,17 @@ public class MetisLoader {
 		if(DEBUG){
 			System.out.println((max - 1 ) + " " + edgeCount); 
 		}
-		
+
 		//Create METIS input file
-		
+
 		File f = new File(outfile); 
 		try {
 			Util.stringToFile((max - 1 ) + " " + edgeCount, f, true);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		
+
+
 		int cnt  = 0; 
 		for (int i = 0; i < max; i++) {
 
@@ -266,10 +274,36 @@ public class MetisLoader {
 			}
 
 		}
+
+		System.out.println(cnt + " edges.");
+		File file = new File(args[0].substring(0 , args[0].lastIndexOf('.')) + ".NodeMap"); 
+		try {
+			
+			serializeNodeMap(longhashes, file);
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.err.println("Error: Failed to write the Node map to file \n" + e.getMessage());
+			
+			 
+		}
 		
-		System.err.println(cnt + " edges.");
+
+		// Calculating memory usage: 
+		Runtime runtime = Runtime.getRuntime();
+		// Run the garbage collector
+		runtime.gc();
+		// Calculate the used memory
+		long memory = runtime.totalMemory() - runtime.freeMemory();
+		System.out.println("Used memory is bytes: " + memory);
+		System.out.println("Used memory is megabytes: "
+				+ bytesToMegabytes(memory));
 	}
 
+	public static long bytesToMegabytes(long bytes) {
+		final long MEGABYTE = 1024L * 1024L;
+	    return bytes / MEGABYTE;
+	  }
 
 	/**************************************************************************
 	 * @param s Node URI or label (if blank) 
@@ -288,6 +322,25 @@ public class MetisLoader {
 		}
 		return id;	
 	}
+	
+	/**************************************************************************
+	 * 
+	 */
+	private static void serializeNodeMap(TLongIntMap map, File f) throws IOException
+	{
+		if (f.getParentFile() != null && !f.getParentFile().exists()) {
+			f.getParentFile().mkdirs();
+		}
+		
+		final FileOutputStream outStream = new FileOutputStream(f);
+		ObjectOutputStream ooStream = new ObjectOutputStream(outStream); 
+		ooStream.writeObject(map);
+		
+		 outStream.flush ();
+		 outStream.close ();
+		 ooStream.close ();
+	}
+	
 
 	/**************************************************************************
 	 * This method create a edges between nodes. 
