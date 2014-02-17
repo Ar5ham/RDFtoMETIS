@@ -2,3 +2,7 @@ bin
 .metadata
 
 /target
+/sample.out.2.txt
+/sample.out.txt
+/University1_1.SR.PREP.METIS.txt
+/University1_1.SR.PREP.NodeMap
