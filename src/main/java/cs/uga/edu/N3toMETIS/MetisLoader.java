@@ -279,7 +279,7 @@ public class MetisLoader {
 		File file = new File(args[0].substring(0 , args[0].lastIndexOf('.')) + ".NodeMap"); 
 		try {
 			
-			serializeNodeMap(longhashes, file);
+			Util.serializeNodeMap(longhashes, file);
 			
 		} catch (Exception e) {
 			// TODO: handle exception
@@ -323,25 +323,6 @@ public class MetisLoader {
 		return id;	
 	}
 	
-	/**************************************************************************
-	 * 
-	 */
-	private static void serializeNodeMap(TLongIntMap map, File f) throws IOException
-	{
-		if (f.getParentFile() != null && !f.getParentFile().exists()) {
-			f.getParentFile().mkdirs();
-		}
-		
-		final FileOutputStream outStream = new FileOutputStream(f);
-		ObjectOutputStream ooStream = new ObjectOutputStream(outStream); 
-		ooStream.writeObject(map);
-		
-		 outStream.flush ();
-		 outStream.close ();
-		 ooStream.close ();
-	}
-	
-
 	/**************************************************************************
 	 * This method create a edges between nodes. 
 	 * No self loop nodes and all edges are undirected 

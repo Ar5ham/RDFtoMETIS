@@ -1,9 +1,15 @@
 package cs.uga.edu.util;
 
+import gnu.trove.map.TLongIntMap;
+import gnu.trove.map.hash.TLongIntHashMap;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -62,5 +68,40 @@ public class Util {
 		fc.write(buffer);
 		fc.close();
 	}
+
+
+	/**************************************************************************
+	 * This method serializes any implementation of TLongIntMap to File
+	 * @param map Instance of a map to be Serialized
+	 * @param f File handle to write to.
+	 * @throws IOException 
+	 */
+	public static void serializeNodeMap(TLongIntMap map, File f) throws IOException
+	{
+		if (f.getParentFile() != null && !f.getParentFile().exists()) {
+			f.getParentFile().mkdirs();
+		}
+
+		final FileOutputStream outStream = new FileOutputStream(f);
+		ObjectOutputStream ooStream = new ObjectOutputStream(outStream); 
+		ooStream.writeObject(map);
+
+		outStream.flush ();
+		outStream.close ();
+		ooStream.close ();
+	}
+
+	public static TLongIntMap readSerializedNodeMap(File f) throws IOException, ClassNotFoundException {
+
+		ObjectInputStream oin = new ObjectInputStream(new FileInputStream(f)); 
+		
+		TLongIntHashMap m = (TLongIntHashMap) oin.readObject(); 
+		oin.close();
+		return m; 
+
+	} 
+
+
+
 
 }

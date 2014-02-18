@@ -26,8 +26,8 @@ import com.hp.hpl.jena.tdb.store.Hash;
 
 import cs.uga.edu.util.MultiBiMap;
 import cs.uga.edu.util.Util;
-import net.kotek.jdbm.DB;
-import net.kotek.jdbm.DBMaker;
+//import net.kotek.jdbm.DB;
+//import net.kotek.jdbm.DBMaker;
 
 
 public class N3ToGraphConverter_old {
@@ -41,7 +41,7 @@ public class N3ToGraphConverter_old {
 	private static boolean includeLiterals = false;			// Flag for storing literal (Not used for now)
 	private static boolean useGuava = false;				// Flag for using Guava library for edge mapping 
 
-	private static DB db;							 
+	//private static DB db;							 
 	private static Map<String,Integer> map;			// Map of uri-to-string
 	private static int  edgeCount = 0; 				// Total number of edges
 	private static int max = 1;
@@ -139,13 +139,13 @@ public class N3ToGraphConverter_old {
 		// If using JDBM Initialize .....  
 		if (usejdbm)
 		{
-			String fileName = "urimap";
-			DBMaker dbm = new DBMaker(fileName);
-			dbm.enableHardCache();
-			dbm.disableTransactions();
-			db = dbm.build();
-			//Creates Map which persists data into DB
-			map = db.createHashMap("uri");
+			//String fileName = "urimap";
+			//DBMaker dbm = new DBMaker(fileName);
+//			dbm.enableHardCache();
+//			dbm.disableTransactions();
+//			db = dbm.build();
+//			//Creates Map which persists data into DB
+//			map = db.createHashMap("uri");
 		}
 
 		// For performance testing.....
