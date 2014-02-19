@@ -124,7 +124,7 @@ public class MetisLoader {
 	 */
 	private static void usage()
 	{
-		System.out.println("usage: " + MetisLoader.class.getName() + " (-r|-ol) (-a|-t) -o outfile.txt file1.n3 [file2.n3 ...]");
+		System.out.println("usage: " + MetisLoader.class.getName() + " (-l) (-a|-t) -o outfile.txt file1.n3 [file2.n3 ...]");
 		System.out.println("available options:\n==================");
 		System.out.println(" -a,  --hash : use hash table for uri-to-string mapping (default)");
 		System.out.println(" -t,  --trie : use trie for uri-to-string mapping (slow, but saves memory)");
