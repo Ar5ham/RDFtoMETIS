@@ -8,16 +8,11 @@ import grph.Grph;
 import grph.in_memory.InMemoryGrph;
 import grph.properties.Property;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
-import java.util.function.BinaryOperator;
-import java.util.stream.Collectors; 
-
-import toools.set.IntSet;
+import java.util.stream.Collectors;
 
 import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.cursors.IntCursor;
@@ -29,12 +24,16 @@ import com.hp.hpl.jena.sparql.core.TriplePath;
 import com.hp.hpl.jena.sparql.syntax.ElementPathBlock;
 import com.hp.hpl.jena.sparql.syntax.ElementVisitorBase;
 import com.hp.hpl.jena.sparql.syntax.ElementWalker;
+import org.apache.log4j.Logger;
+import org.apache.log4j.BasicConfigurator;
 
 /**
  * @author Arssham
  *
  */
 public class SPARQLInMemoryGraph extends InMemoryGrph{
+	
+	static Logger logger = Logger.getLogger(SPARQLInMemoryGraph.class);
 
 	/***************************************************************
 	 * @param query: String representation of SPARQL query
@@ -163,40 +162,30 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 
 		return triples; 
 	}
-	
+
 	public static Set<Node> findCommonPredicate(String [] queries)
 	{
-		Set<Set<Node>> sets = Arrays.stream(queries).
+		Set<Set<Node>> qSets = Arrays.stream(queries).
 				map(s -> SPARQLInMemoryGraph.getAllPredicates(s)). 
 				collect(Collectors.toSet());
-		Set<Node> crossSet = new HashSet<>(){
-			
-		}; 
-		
-		
-		
-		//Set<Set<Node>> qSets = new HashSet<>(); 
-//		
-//		for(String qry: queries)
-//		{
-//			qSets.add(SPARQLInMemoryGraph.getAllPredicates(qry)); 		
-//		}
-//		
-//		Set<Node> crossSet = new HashSet<Node>(); 
-//		for(Set<Node> s : qSets)
-//		{
-//			crossSet.retainAll(s); 
-//		}
-//		
-//		return crossSet;
+
+
+		Set<Node> crossSet = new HashSet<Node>(); 
+		for(Set<Node> s : qSets)
+		{
+			crossSet.retainAll(s); 
+		}
+
+		return crossSet;
+
 	}
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
 
 	/***************************************************************
 	 * @param label
@@ -214,7 +203,7 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 
 		return false; 
 	}
-	
+
 	/***************************************************************
 	 * @param label
 	 * @param type
@@ -242,13 +231,13 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 
 		return -1 ;
 	}
-	
-	
+
+
 	/***************************************************************
 	 * @param query
 	 * @return
 	 */
-	public static Grph GraphizeQuery(String query)
+	public static Grph sparqlToGraph(String query)
 	{
 		ClassLoader.getSystemClassLoader().setDefaultAssertionStatus(true);
 		//In-order to create a graph for each Triple we need to get S,P and O and create a node for each
@@ -302,9 +291,9 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 	 * @param g
 	 * @return
 	 */
-	public static Grph computeLineGraph(Grph g)
+	public static SPARQLInMemoryGraph computeLineGraph(SPARQLInMemoryGraph g)
 	{
-		Grph lineGraph = new InMemoryGrph();
+		SPARQLInMemoryGraph lineGraph = new SPARQLInMemoryGraph();
 
 		for (int e : g.getEdges().toIntArray())
 		{
@@ -355,8 +344,8 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 
 		return lineGraph;
 	}
-	
-	
+
+
 	/***************************************************************
 	 * @return
 	 */
@@ -372,13 +361,69 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		return outDegrees;
 	}
 
-
+	public SPARQLInMemoryGraph productGraph( SPARQLInMemoryGraph g)
+	{
+		SPARQLInMemoryGraph prodg = new SPARQLInMemoryGraph();
+		
+		//Adding appropriate vertices to the product Graph. 
+		for (int i : getVertices().toIntArray()) {
+			
+			for(int j : g.getVertices().toIntArray())
+			{
+				if( getVertexLabelProperty().getValueAsString(i).equals(g.getVertexLabelProperty().getValueAsString(j)))
+				{
+					int v = prodg.addVertex(); 
+					String s = getVertexLabelProperty().getValueAsString(i); 
+					System.out.println(s);
+					prodg.getVertexLabelProperty().setValue(v,s );
+					
+				}
+			}//end for 
+		}//end for
+		
+		int [] prodV = prodg.getVertices().toIntArray(); 
+		
+		// Now do a pairwise comparison
+		for(int k = 0 ; k < prodV.length; k++)
+		{
+			String slbl = prodg.getVertexLabelProperty().getValueAsString(prodV[k]);
+			
+			for(int l = 0; l < prodV.length; l++)
+			{
+				// No self comparison 
+				if(k == l) 
+					continue; 
+				
+				//get the label of the vertex
+				String dlbl = prodg.getVertexLabelProperty().getValueAsString(prodV[l]);
+				
+				// Now we have a pair of vertices we should see if they are adjacent in both graphs
+				//In the first graph
+				boolean s = areVerticesAdjacent(getLabelId(slbl, Grph.TYPE.vertex), getLabelId(dlbl, Grph.TYPE.vertex)); 
+				boolean d = g.areVerticesAdjacent( g.getLabelId(slbl, Grph.TYPE.vertex), g.getLabelId(dlbl, Grph.TYPE.vertex)); 
+				
+				
+				if(s && d)
+				{
+					prodg.addDirectedSimpleEdge(prodV[k], prodV[l]); 
+				}
+				else if (!s && !d)
+				{
+					prodg.addDirectedSimpleEdge(prodV[k], prodV[l]); 
+				}
+				
+			}//end for
+		}//end for
+		
+		return prodg; 
+	}
 
 
 
 
 	public static void main(String[] args) {
-
+		BasicConfigurator.configure();
+		
 		String [ ] queryStrings = new String [4]; 
 		//Grph [ ] graphs = new Grph [4]; 
 
@@ -418,17 +463,77 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 				"?p4 ?v1" + 
 				"}\n"; 
 
-		SPARQLInMemoryGraph g = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.GraphizeQuery(queryStrings[0]);
-		g.displayGraphstream_0_4_2(); 
+		SPARQLInMemoryGraph grph1 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[0]);
+		grph1.displayGraphstream_0_4_2(); 
 
-		Grph gln = SPARQLInMemoryGraph.computeLineGraph(g);
-		gln.displayGraphstream_0_4_2(); 
+		SPARQLInMemoryGraph grphLnGraph1 = SPARQLInMemoryGraph.computeLineGraph(grph1);
+		grphLnGraph1.displayGraphstream_0_4_2(); 
+		
+		SPARQLInMemoryGraph grph2 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[1]);
+		grph2.displayGraphstream_0_4_2(); 
+		
+		SPARQLInMemoryGraph grphLnGraph2 = SPARQLInMemoryGraph.computeLineGraph(grph2);
+		grphLnGraph2.displayGraphstream_0_4_2(); 
+		
+		SPARQLInMemoryGraph prodGrph = grphLnGraph1.productGraph(grphLnGraph2); 
+		prodGrph.displayGraphstream_0_4_2();
+		
+		
+		
+		
+		
+//		System.out.println("DONE!");
 
-		System.out.println("DONE!");
-
+		//Simple Product Graph
+		//First  graph
+		
+//		SPARQLInMemoryGraph g1 = new SPARQLInMemoryGraph(); 
+//		SPARQLInMemoryGraph g2 = new SPARQLInMemoryGraph(); 
+//		
+//		int v = g1.addVertex();   //add a vertex; 
+//		g1.getVertexLabelProperty().setValue(v, "P1"); 
+//		
+//		v = g1.addVertex(); 
+//		g1.getVertexLabelProperty().setValue(v, "P2");
+//		
+//		g1.addUndirectedSimpleEdge(v, v-1); 
+//		
+//		// Second Graph
+//		v = g2.addVertex();   //add a vertex; 
+//		g2.getVertexLabelProperty().setValue(v, "P1");
+//		
+//		v = g2.addVertex(); 
+//		g2.getVertexLabelProperty().setValue(v, "P2");
+//		
+//		g2.addUndirectedSimpleEdge(v, v-1); 
+//		
+//		
+//		g1.displayGraphstream_0_4_2(); 
+//		g2.displayGraphstream_0_4_2(); 
+//		
+//		
+//		// Product Graph
+//		SPARQLInMemoryGraph prodg = (SPARQLInMemoryGraph) g1.productGraph(g2); 
+//		
+//		
+//		prodg.displayGraphstream_0_4_2();
+//		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 
 	}
 
-	
+
 
 }
