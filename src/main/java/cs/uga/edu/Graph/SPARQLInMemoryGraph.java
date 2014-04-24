@@ -6,6 +6,7 @@ package cs.uga.edu.Graph;
 
 import grph.Grph;
 import grph.in_memory.InMemoryGrph;
+import grph.properties.ObjectProperty;
 import grph.properties.Property;
 
 import java.util.Arrays;
@@ -13,6 +14,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import javafarm.demo.Sysout;
+import book.set.Hash;
 
 import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.cursors.IntCursor;
@@ -24,6 +28,7 @@ import com.hp.hpl.jena.sparql.core.TriplePath;
 import com.hp.hpl.jena.sparql.syntax.ElementPathBlock;
 import com.hp.hpl.jena.sparql.syntax.ElementVisitorBase;
 import com.hp.hpl.jena.sparql.syntax.ElementWalker;
+
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
 
@@ -163,29 +168,25 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		return triples; 
 	}
 
+	/***************************************************************
+	 * @param queries
+	 * @return
+	 */
 	public static Set<Node> findCommonPredicate(String [] queries)
 	{
 		Set<Set<Node>> qSets = Arrays.stream(queries).
 				map(s -> SPARQLInMemoryGraph.getAllPredicates(s)). 
 				collect(Collectors.toSet());
 
-
-		Set<Node> crossSet = new HashSet<Node>(); 
-		for(Set<Node> s : qSets)
+		Iterator<Set<Node>> it = qSets.iterator();  
+		Set<Node> crossSet = it.next();  
+		while(it.hasNext())
 		{
-			crossSet.retainAll(s); 
+			crossSet.retainAll(it.next()); 
 		}
-
+		
 		return crossSet;
-
 	}
-
-
-
-
-
-
-
 
 	/***************************************************************
 	 * @param label
@@ -291,7 +292,7 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 	 * @param g
 	 * @return
 	 */
-	public static SPARQLInMemoryGraph computeLineGraph(SPARQLInMemoryGraph g)
+	public static SPARQLInMemoryGraph getLineGraph(SPARQLInMemoryGraph g)
 	{
 		SPARQLInMemoryGraph lineGraph = new SPARQLInMemoryGraph();
 
@@ -361,7 +362,12 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		return outDegrees;
 	}
 
-	public SPARQLInMemoryGraph productGraph( SPARQLInMemoryGraph g)
+	
+	/***************************************************************
+	 * @param g
+	 * @return
+	 */
+	public SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph g)
 	{
 		SPARQLInMemoryGraph prodg = new SPARQLInMemoryGraph();
 		
@@ -417,7 +423,69 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		
 		return prodg; 
 	}
+	
+	
 
+
+	
+	public static  SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph[] lineGrphs)
+	{
+		
+		// Let's first find the intersection of all vertices (i.e. predicates)
+		
+		//Iterator<SPARQLInMemoryGraph> it = lineGrphs.iterator();
+		Set<Set<String>> lables = new HashSet<>(); 
+		
+		for(SPARQLInMemoryGraph g : lineGrphs)
+		{
+			Property p = g.getVertexLabelProperty(); 
+			Set<String> s = new HashSet<>();
+			
+			for(int i : g.getVertices().toIntArray())
+			{
+				s.add(p.getValueAsString(i));
+				
+			}		
+			
+			lables.add(s); 
+		}// end while
+		
+		
+		Iterator<Set<String>> lblit = lables.iterator(); 
+		Set<String> cross = lblit.hasNext()? lblit.next() : null;
+		
+		while(lblit.hasNext())
+		{
+			cross.retainAll(lblit.next()); 
+		}
+		
+		// Now we have set of common vertices (i.e. predicates) in line graphs.
+		//Now let's calculate their product graph.
+		String[] crossAr = cross.toArray(new String[0]); 
+		
+		for (int i = 0; i < crossAr.length; i++) {
+			for (int j = 0; j < crossAr.length; j++) {
+				
+				if(i == j )
+					continue;
+				
+				
+				
+				
+				
+				
+			}// end for 
+		}//end for
+		
+		
+		
+		
+		return null ;  
+	}
+	
+	
+	
+	
 
 
 
@@ -456,27 +524,54 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 
 		queryStrings [3]  = "" +
 				"SELECT * WHERE {\n" +
-				"?x4 ?p1 ?z4;\n" + 
+				"?x4 ?p1 ?z4.\n" + 
 				"?y4 ?p2 ?z4;\n" +
 				"?p3 ?u4.\n" +
 				"?w4 ?p6 ?u4;\n" +
 				"?p4 ?v1" + 
 				"}\n"; 
 
-		SPARQLInMemoryGraph grph1 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[0]);
-		grph1.displayGraphstream_0_4_2(); 
-
-		SPARQLInMemoryGraph grphLnGraph1 = SPARQLInMemoryGraph.computeLineGraph(grph1);
-		grphLnGraph1.displayGraphstream_0_4_2(); 
 		
-		SPARQLInMemoryGraph grph2 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[1]);
-		grph2.displayGraphstream_0_4_2(); 
+		SPARQLInMemoryGraph [] lineGrphs = new SPARQLInMemoryGraph [queryStrings.length];
 		
-		SPARQLInMemoryGraph grphLnGraph2 = SPARQLInMemoryGraph.computeLineGraph(grph2);
-		grphLnGraph2.displayGraphstream_0_4_2(); 
+		for(int i = 0; i < lineGrphs.length ; i++)
+		{
+			//Create a graph 
+			SPARQLInMemoryGraph grph = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[i] );
+			lineGrphs[i] = SPARQLInMemoryGraph.getLineGraph(grph);
+			//lineGrphs[i].displayGraphstream_0_4_2(); 
+		}
 		
-		SPARQLInMemoryGraph prodGrph = grphLnGraph1.productGraph(grphLnGraph2); 
-		prodGrph.displayGraphstream_0_4_2();
+		SPARQLInMemoryGraph.getProductGraph(lineGrphs); 
+		
+		
+		System.out.println("Done!");
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+//		SPARQLInMemoryGraph grph1 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[0]);
+//		//grph1.displayGraphstream_0_4_2(); 
+//
+//		SPARQLInMemoryGraph grphLnGraph1 = SPARQLInMemoryGraph.computeLineGraph(grph1);
+//		//grphLnGraph1.displayGraphstream_0_4_2(); 
+//		
+//		SPARQLInMemoryGraph grph2 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[1]);
+//		grph2.displayGraphstream_0_4_2(); 
+//		
+//		SPARQLInMemoryGraph grphLnGraph2 = SPARQLInMemoryGraph.computeLineGraph(grph2);
+//		grphLnGraph2.displayGraphstream_0_4_2(); 
+//		
+//		SPARQLInMemoryGraph prodGrph = grphLnGraph1.productGraph(grphLnGraph2); 
+//		prodGrph.displayGraphstream_0_4_2();
 		
 		
 		
