@@ -586,18 +586,6 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		return prodg; 
 	}
 
-	public SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph []  g) throws Exception
-	{
-		
-		
-		
-		return null; 
-	}
-
-	
-	
-
-
 	/*
 	public static  SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph[] lineGrphs)
 	{
