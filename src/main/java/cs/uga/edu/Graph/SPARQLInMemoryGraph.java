@@ -5,6 +5,7 @@ package cs.uga.edu.Graph;
 
 
 import grph.Grph;
+import grph.algo.structural.cliquer.FindAllCliques;
 import grph.in_memory.InMemoryGrph;
 import grph.properties.ObjectProperty;
 import grph.properties.Property;
@@ -28,16 +29,21 @@ import com.hp.hpl.jena.sparql.core.TriplePath;
 import com.hp.hpl.jena.sparql.syntax.ElementPathBlock;
 import com.hp.hpl.jena.sparql.syntax.ElementVisitorBase;
 import com.hp.hpl.jena.sparql.syntax.ElementWalker;
+import com.sun.corba.se.spi.legacy.connection.GetEndPointInfoAgainException;
 
+import org.apache.jena.iri.impl.ViolationCodeInfo.InSpec;
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
+
+import toools.set.IntSet;
+import toools.set.IntSets;
 
 /**
  * @author Arssham
  *
  */
 public class SPARQLInMemoryGraph extends InMemoryGrph{
-	
+
 	static Logger logger = Logger.getLogger(SPARQLInMemoryGraph.class);
 
 	/***************************************************************
@@ -184,7 +190,7 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		{
 			crossSet.retainAll(it.next()); 
 		}
-		
+
 		return crossSet;
 	}
 
@@ -362,136 +368,301 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 		return outDegrees;
 	}
 
-	
+	/***************************************************************
+	 * @param src
+	 * @param dest
+	 * @param dir
+	 * @return
+	 *//*
+	public int getEdgeConnecting(int src, int dest, Grph.DIRECTION dir)
+	{
+		if(!getVertices().contains(src) || !getVertices().contains(dest))
+			return -1;
+
+		//From source to destination
+		if(dir == Grph.DIRECTION.out)
+		{ 
+			IntSet out =  getOutEdges(src); //out going edges from src
+			for(IntCursor c : out)
+			{
+				int e = c.value; 
+
+				if(isDirectedSimpleEdge(e))
+				{
+					if (getDirectedSimpleEdgeHead(e) == dest){
+						return e;
+					}
+				}
+				else if (isDirectedHyperEdge(e))
+				{
+					if (getDirectedHyperEdgeHead(e).contains(dest)){
+						return e;
+					}
+				}
+			}
+
+		}
+		else if(dir == Grph.DIRECTION.in) // from dest to src
+		{
+			IntSet in = getInEdges(src); //Incoming edges of src
+			for(IntCursor c : in)
+			{
+				int e = c.value; 
+				if(isDirectedSimpleEdge(e)){
+					if(getDirectedSimpleEdgeTail(e) == dest){
+						return e; 
+					}
+				}
+				else if(isDirectedHyperEdge(e)){
+					if(getDirectedHyperEdgeTail(e).contains(dest)){
+						return e; 
+					}
+				}
+			}		
+		}
+		else
+		{
+			return getEdgesConnecting(src, dest); 
+
+
+		}
+
+		return -1; 
+
+	}*/
+
+
+
+
 	/***************************************************************
 	 * @param g
 	 * @return
+	 * @throws Exception 
 	 */
-	public SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph g)
+	public SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph g) throws Exception
 	{
-		SPARQLInMemoryGraph prodg = new SPARQLInMemoryGraph();
-		
-		//Adding appropriate vertices to the product Graph. 
-		for (int i : getVertices().toIntArray()) {
-			
-			for(int j : g.getVertices().toIntArray())
-			{
-				if( getVertexLabelProperty().getValueAsString(i).equals(g.getVertexLabelProperty().getValueAsString(j)))
-				{
-					int v = prodg.addVertex(); 
-					String s = getVertexLabelProperty().getValueAsString(i); 
-					System.out.println(s);
-					prodg.getVertexLabelProperty().setValue(v,s );
-					
-				}
-			}//end for 
-		}//end for
-		
-		int [] prodV = prodg.getVertices().toIntArray(); 
-		
-		// Now do a pairwise comparison
-		for(int k = 0 ; k < prodV.length; k++)
+
+		// Let's first find the intersection of all vertices (i.e. predicates)
+		// Let's get all the labels.
+		Set<String> slables = new HashSet<>();
+		Set<String> dlables = new HashSet<>();
+
+		Property srcLabelproperty = getVertexLabelProperty(); 
+		Property destLabelproperty  = g.getVertexLabelProperty(); 
+
+		//Get labels for first graph
+		for(int i : getVertices().toIntArray())
 		{
-			String slbl = prodg.getVertexLabelProperty().getValueAsString(prodV[k]);
-			
-			for(int l = 0; l < prodV.length; l++)
-			{
-				// No self comparison 
-				if(k == l) 
-					continue; 
-				
-				//get the label of the vertex
-				String dlbl = prodg.getVertexLabelProperty().getValueAsString(prodV[l]);
-				
-				// Now we have a pair of vertices we should see if they are adjacent in both graphs
-				//In the first graph
-				boolean s = areVerticesAdjacent(getLabelId(slbl, Grph.TYPE.vertex), getLabelId(dlbl, Grph.TYPE.vertex)); 
-				boolean d = g.areVerticesAdjacent( g.getLabelId(slbl, Grph.TYPE.vertex), g.getLabelId(dlbl, Grph.TYPE.vertex)); 
-				
-				
-				if(s && d)
-				{
-					prodg.addDirectedSimpleEdge(prodV[k], prodV[l]); 
-				}
-				else if (!s && !d)
-				{
-					prodg.addDirectedSimpleEdge(prodV[k], prodV[l]); 
-				}
-				
-			}//end for
-		}//end for
+			slables.add(srcLabelproperty.getValueAsString(i));
+		}		
+
+		//Get labels for 2nd graph
+		for(int i : g.getVertices().toIntArray())
+		{
+			dlables.add(destLabelproperty.getValueAsString(i)); 
+		}
+
+		slables.retainAll(dlables); 
+
+		SPARQLInMemoryGraph prodg = new SPARQLInMemoryGraph();
+		Property prodgVLabel = prodg.getVertexLabelProperty();
+		Property prodgELabel = prodg.getEdgeLabelProperty(); 
 		
+		String[] crosslbl = slables.toArray(new String[0]);
+
+		Property srcEdgeProperty = getEdgeLabelProperty(); 
+		Property destEdgeProperty  = g.getEdgeLabelProperty(); 
+
+
+		for(int i = 0; i < crosslbl.length - 1 ; i++)
+		{
+			String srcVer  = crosslbl[i]; 
+
+			for(int j = i + 1; j < crosslbl.length; j++)
+			{
+				/*// No self comparison 
+				if(i == j) 
+					continue;*/
+
+				String destVer = crosslbl[j]; 
+				System.out.println("SrcVer: " + srcVer + " destVer: " + destVer);
+
+				// Source Graph
+				int srcVerId = getLabelId(srcVer, Grph.TYPE.vertex); 
+				int desVerId = getLabelId(destVer, Grph.TYPE.vertex); 
+				// Dest Graph
+				int GsrcVerId = g.getLabelId(srcVer, Grph.TYPE.vertex); 
+				int GdesVerId = g.getLabelId(destVer, Grph.TYPE.vertex); 
+
+				//1. Are these adjacent in both graph with the same label
+				if(areVerticesAdjacent(srcVerId, desVerId)
+						&& g.areVerticesAdjacent(GsrcVerId , GdesVerId ))
+				{
+					//2.Check that the edges connecting the two vertices are the same labels
+					// From srcVer ---> destVer  in both graphs
+					int [] srcToDes = getEdgesConnecting(srcVerId,desVerId).toIntArray(); 
+					int [] GsrcToDes = g.getEdgesConnecting(GsrcVerId, GdesVerId).toIntArray(); 
+
+					if(srcToDes.length != 1 || GsrcToDes.length != 1)
+					{
+						throw new Exception("Only one edge can connect vertices of line graph on each direction"); 
+					}
+
+					// 3. Check the label of edges connecting vertices.
+					boolean src2desLable =  srcEdgeProperty.getValueAsString(srcToDes[0]).
+							equalsIgnoreCase(destEdgeProperty.getValueAsString(GsrcToDes[0])); 
+
+					// From destVer ---> srcVer in both graphs
+					srcToDes = getEdgesConnecting(desVerId, srcVerId).toIntArray(); 
+					GsrcToDes = g.getEdgesConnecting(GdesVerId, GsrcVerId).toIntArray(); 
+
+					if(srcToDes.length != 1 || GsrcToDes.length != 1)
+					{
+						throw new Exception("Only one edge can connect vertices of line graph on each direction"); 
+					}
+
+					boolean des2srcLable =  srcEdgeProperty.getValueAsString(srcToDes[0]).
+							equalsIgnoreCase(destEdgeProperty.getValueAsString(GsrcToDes[0])); 
+
+					// if from s -- > d and from d --> s there is an edge in both graphs with the same label
+					if(src2desLable && des2srcLable)
+					{
+						int v1 = prodg.getLabelId(srcVer, Grph.TYPE.vertex); 
+						// if the vertices don't exist add them
+						if(	v1 == -1){
+							v1 = prodg.addVertex(); 
+							prodgVLabel.setValue(v1, srcVer);
+						}
+
+						int v2 = prodg.getLabelId(destVer, Grph.TYPE.vertex); 
+						if( v2 == -1){
+							v2 =  prodg.addVertex(); 
+							prodgVLabel.setValue(v2, destVer);
+						}
+
+						// add an edge between the two if there is non! 
+						if(!prodg.areVerticesAdjacent(v1, v2))
+						{
+							//add an edge from v1 to v2
+							int e = prodg.addDirectedSimpleEdge(v1, v2);
+							prodgELabel.setValue(e, srcEdgeProperty.getValueAsString(srcToDes[0]));
+
+							e = prodg.addDirectedSimpleEdge(v2 , v1);
+							prodgELabel.setValue(e, srcEdgeProperty.getValueAsString(srcToDes[0]));
+						}
+					}// end if
+				}// end if
+				else if(!areVerticesAdjacent(srcVerId, desVerId)
+						&& !g.areVerticesAdjacent(GsrcVerId , GdesVerId ))
+				{
+					
+					// add the vertex with original label if it doesn't exist
+					int v1 = prodg.getLabelId(srcVer, Grph.TYPE.vertex); 
+					if(	v1 == -1){
+						v1 = prodg.addVertex(); 
+						prodgVLabel.setValue(v1, srcVer);
+					}
+					
+					int v2 = prodg.getLabelId(destVer, Grph.TYPE.vertex); 
+					if( v2 == -1){
+						v2 =  prodg.addVertex(); 
+						prodgVLabel.setValue(v2, destVer);
+					}
+					
+					// add an edge between the two if there is non! 
+					if(!prodg.areVerticesAdjacent(v1, v2))
+					{
+						//add an edge from v1 to v2
+						//No labels here since they were not connected on the original one!
+						prodg.addDirectedSimpleEdge(v1, v2);
+						prodg.addDirectedSimpleEdge(v2 , v1);
+					}
+				}
+				
+				
+			}// end for
+		}//end for
+
 		return prodg; 
 	}
-	
-	
 
-
-	
-	public static  SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph[] lineGrphs)
+	public SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph []  g) throws Exception
 	{
 		
-		// Let's first find the intersection of all vertices (i.e. predicates)
 		
+		
+		return null; 
+	}
+
+	
+	
+
+
+	/*
+	public static  SPARQLInMemoryGraph getProductGraph( SPARQLInMemoryGraph[] lineGrphs)
+	{
+
+		// Let's first find the intersection of all vertices (i.e. predicates)
+
 		//Iterator<SPARQLInMemoryGraph> it = lineGrphs.iterator();
 		Set<Set<String>> lables = new HashSet<>(); 
-		
+
 		for(SPARQLInMemoryGraph g : lineGrphs)
 		{
 			Property p = g.getVertexLabelProperty(); 
 			Set<String> s = new HashSet<>();
-			
+
 			for(int i : g.getVertices().toIntArray())
 			{
 				s.add(p.getValueAsString(i));
-				
+
 			}		
-			
+
 			lables.add(s); 
 		}// end while
-		
-		
+
+
 		Iterator<Set<String>> lblit = lables.iterator(); 
 		Set<String> cross = lblit.hasNext()? lblit.next() : null;
-		
+
 		while(lblit.hasNext())
 		{
 			cross.retainAll(lblit.next()); 
 		}
-		
+
 		// Now we have set of common vertices (i.e. predicates) in line graphs.
 		//Now let's calculate their product graph.
 		String[] crossAr = cross.toArray(new String[0]); 
-		
+
 		for (int i = 0; i < crossAr.length; i++) {
 			for (int j = 0; j < crossAr.length; j++) {
-				
+
 				if(i == j )
 					continue;
-				
-				
-				
-				
-				
-				
+
+
+
+
+
+
 			}// end for 
 		}//end for
-		
-		
-		
-		
+
+
+
+
 		return null ;  
-	}
-	
-	
-	
-	
+	}*/
 
 
 
-	public static void main(String[] args) {
+
+
+
+
+	public static void main(String[] args){ 
 		BasicConfigurator.configure();
-		
+
 		String [ ] queryStrings = new String [4]; 
 		//Grph [ ] graphs = new Grph [4]; 
 
@@ -531,9 +702,54 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 				"?p4 ?v1" + 
 				"}\n"; 
 
-		
+
 		SPARQLInMemoryGraph [] lineGrphs = new SPARQLInMemoryGraph [queryStrings.length];
 		
+		// Create line graphs. 
+		for(int i = 0; i < queryStrings.length ; i++)
+		{
+			//Create a graph 
+			SPARQLInMemoryGraph grph = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[i]);
+			lineGrphs[i] = SPARQLInMemoryGraph.getLineGraph(grph);
+			//lineGrphs[i].displayGraphstream_0_4_2(); 
+		}
+		
+		
+		
+		try {
+			
+			SPARQLInMemoryGraph prodGr = lineGrphs[0].getProductGraph(lineGrphs[1]);
+			prodGr.displayGraphstream_0_4_2(); 
+			
+			for(int i = 2; i < lineGrphs.length; i++)
+			{
+				prodGr = prodGr.getProductGraph(lineGrphs[i]); 
+			}
+			prodGr.displayGraphstream_0_4_2(); 
+			
+			FindAllCliques cliquer = new FindAllCliques(); 
+			
+			cliquer.compute(prodGr); 
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+
+
+		/*SPARQLInMemoryGraph [] lineGrphs = new SPARQLInMemoryGraph [queryStrings.length];
+
 		for(int i = 0; i < lineGrphs.length ; i++)
 		{
 			//Create a graph 
@@ -541,91 +757,97 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 			lineGrphs[i] = SPARQLInMemoryGraph.getLineGraph(grph);
 			//lineGrphs[i].displayGraphstream_0_4_2(); 
 		}
-		
+
 		SPARQLInMemoryGraph.getProductGraph(lineGrphs); 
+
+
+		System.out.println("Done!");*/
 		
-		
-		System.out.println("Done!");
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-//		SPARQLInMemoryGraph grph1 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[0]);
-//		//grph1.displayGraphstream_0_4_2(); 
-//
-//		SPARQLInMemoryGraph grphLnGraph1 = SPARQLInMemoryGraph.computeLineGraph(grph1);
-//		//grphLnGraph1.displayGraphstream_0_4_2(); 
-//		
-//		SPARQLInMemoryGraph grph2 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[1]);
-//		grph2.displayGraphstream_0_4_2(); 
-//		
-//		SPARQLInMemoryGraph grphLnGraph2 = SPARQLInMemoryGraph.computeLineGraph(grph2);
-//		grphLnGraph2.displayGraphstream_0_4_2(); 
-//		
-//		SPARQLInMemoryGraph prodGrph = grphLnGraph1.productGraph(grphLnGraph2); 
-//		prodGrph.displayGraphstream_0_4_2();
-		
-		
-		
-		
-		
-//		System.out.println("DONE!");
+
+
+
+
+
+
+
+
+
+
+
+		/*SPARQLInMemoryGraph grph1 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[0]);
+		grph1.displayGraphstream_0_4_2(); 
+
+		SPARQLInMemoryGraph grphLnGraph1 = SPARQLInMemoryGraph.getLineGraph(grph1);
+		grphLnGraph1.displayGraphstream_0_4_2(); 
+
+		SPARQLInMemoryGraph grph2 = (SPARQLInMemoryGraph) SPARQLInMemoryGraph.sparqlToGraph(queryStrings[1]);
+		grph2.displayGraphstream_0_4_2(); 
+
+		SPARQLInMemoryGraph grphLnGraph2 = SPARQLInMemoryGraph.getLineGraph(grph2);
+		grphLnGraph2.displayGraphstream_0_4_2(); 
+
+		SPARQLInMemoryGraph prodGrph = null;
+		try {
+			prodGrph = grphLnGraph1.getProductGraph(grphLnGraph2);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+		prodGrph.displayGraphstream_0_4_2();*/
+
+
+
+
+
+		//		System.out.println("DONE!");
 
 		//Simple Product Graph
 		//First  graph
-		
-//		SPARQLInMemoryGraph g1 = new SPARQLInMemoryGraph(); 
-//		SPARQLInMemoryGraph g2 = new SPARQLInMemoryGraph(); 
-//		
-//		int v = g1.addVertex();   //add a vertex; 
-//		g1.getVertexLabelProperty().setValue(v, "P1"); 
-//		
-//		v = g1.addVertex(); 
-//		g1.getVertexLabelProperty().setValue(v, "P2");
-//		
-//		g1.addUndirectedSimpleEdge(v, v-1); 
-//		
-//		// Second Graph
-//		v = g2.addVertex();   //add a vertex; 
-//		g2.getVertexLabelProperty().setValue(v, "P1");
-//		
-//		v = g2.addVertex(); 
-//		g2.getVertexLabelProperty().setValue(v, "P2");
-//		
-//		g2.addUndirectedSimpleEdge(v, v-1); 
-//		
-//		
-//		g1.displayGraphstream_0_4_2(); 
-//		g2.displayGraphstream_0_4_2(); 
-//		
-//		
-//		// Product Graph
-//		SPARQLInMemoryGraph prodg = (SPARQLInMemoryGraph) g1.productGraph(g2); 
-//		
-//		
-//		prodg.displayGraphstream_0_4_2();
-//		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+
+		//		SPARQLInMemoryGraph g1 = new SPARQLInMemoryGraph(); 
+		//		SPARQLInMemoryGraph g2 = new SPARQLInMemoryGraph(); 
+		//		
+		//		int v = g1.addVertex();   //add a vertex; 
+		//		g1.getVertexLabelProperty().setValue(v, "P1"); 
+		//		
+		//		v = g1.addVertex(); 
+		//		g1.getVertexLabelProperty().setValue(v, "P2");
+		//		
+		//		g1.addUndirectedSimpleEdge(v, v-1); 
+		//		
+		//		// Second Graph
+		//		v = g2.addVertex();   //add a vertex; 
+		//		g2.getVertexLabelProperty().setValue(v, "P1");
+		//		
+		//		v = g2.addVertex(); 
+		//		g2.getVertexLabelProperty().setValue(v, "P2");
+		//		
+		//		g2.addUndirectedSimpleEdge(v, v-1); 
+		//		
+		//		
+		//		g1.displayGraphstream_0_4_2(); 
+		//		g2.displayGraphstream_0_4_2(); 
+		//		
+		//		
+		//		// Product Graph
+		//		SPARQLInMemoryGraph prodg = (SPARQLInMemoryGraph) g1.productGraph(g2); 
+		//		
+		//		
+		//		prodg.displayGraphstream_0_4_2();
+		//		
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	}
 
