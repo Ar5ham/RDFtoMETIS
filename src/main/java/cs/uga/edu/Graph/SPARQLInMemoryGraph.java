@@ -719,6 +719,9 @@ public class SPARQLInMemoryGraph extends InMemoryGrph{
 			
 			cliquer.compute(prodGr); 
 			
+			
+			
+			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

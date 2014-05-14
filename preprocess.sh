@@ -1,5 +1,7 @@
  #!/bin/bash
 
+ # grep -vf: -v: invert match -f: Pattern file 
+ # egrep 
  #grep -vf blackList.txt University1_1.SR.nt | egrep '.*\ .*\ (<|_)' |sort | less
 
 function Usage {
@@ -81,8 +83,8 @@ if [ -z "$IN_FILE" ] || [ -z "$OUT_FILE" ] || [ -z  "$PAT_FILE" ]; then
 	Usage "$0"
 	exit 1;
 else
-	grep -vf $PAT_FILE $IN_FILE |  egrep '.*\ .*\ (<|_)' | sort > $OUT_FILE 
- 	echo "------ Got to the code!!!! FINALLY!------- "
+	grep -vf $PAT_FILE $IN_FILE |  egrep '.*\ .*\ (<|_)' | sort --field-separator=' ' -k2 -k1> $OUT_FILE 
+ 	#echo "------ Got to the code!!!! FINALLY!------- "
 fi
 
 
