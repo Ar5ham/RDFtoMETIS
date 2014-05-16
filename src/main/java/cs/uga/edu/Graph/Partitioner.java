@@ -11,8 +11,12 @@ package cs.uga.edu.Graph;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,12 +27,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javafarm.demo.Sysout;
+
 public class Partitioner {
-	
+
 	private static int 	   numPartitions 		= 3;
 	private static boolean useHashPartitioning  = true;
-	
-	
+	private final static int [] serverCap = {1000, 2000, 2000, 2000};
+	private static boolean[][] partitionMap;
+
+
+
+
 	private static final boolean DEBUG = true ;
 
 	public static Set<String> findDistinctPredicates(String[] args)
@@ -68,7 +78,7 @@ public class Partitioner {
 		}
 		return predSet; 
 	}
-	
+
 	/**************************************************************************
 	 * @param args
 	 */
@@ -87,80 +97,167 @@ public class Partitioner {
 			e.printStackTrace();
 			System.exit(2);
 		}
-		
-		// Let's read the file
-		for(int i = 0 ; i < args.length; i++)
+
+		if(!useHashPartitioning)
 		{
-			Path path = Paths.get(args[i]); 
-			try (BufferedReader reader = Files.newBufferedReader(path , StandardCharsets.UTF_8)){
-				String line = null;
-				
-				
-										
-					if(!useHashPartitioning)
+			//For all the files in the args[]
+			List<List<Long>> predLns = new ArrayList();
+
+			for(int i = 0 ; i < args.length; i++)
+			{
+				int predStrtLine = 1;   //Current Predicate Start Line.
+				int lineNum = 1;
+
+				String line = null; 
+				String curntPred = null; 
+				try {
+
+					RandomAccessFile aFile = new RandomAccessFile(args[i], "r");
+					while((line = aFile.readLine()) != null)
 					{
-						/*
-						 * reading the document once and create an array list with line numbers for when predicates
-						 * change in the file. 
-						 */
-						int lineNum = 1;
-						List<Integer> predLns = new ArrayList<Integer>(); 
-						String curntPred = null; 
-						while ((line = reader.readLine()) != null) {
-							
-							String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
-							if(curntPred == null || !curntPred.equalsIgnoreCase( pred))
-							{
-								curntPred =  pred; 
-								predLns.add(lineNum++); 
-							}
-							else
-							{
-								lineNum++; 
-							}
-						}//end while
-						
 						if(DEBUG)
+							System.out.println(line);
+
+						String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
+
+						if(curntPred == null)
 						{
-							for(int lns : predLns)
+							curntPred = pred;
+							predStrtLine = lineNum++; 
+
+
+						}
+						else if(curntPred != null && !curntPred.equalsIgnoreCase(pred))
+						{
+							List<Long> l = new ArrayList<>();
+							l.add((long) predStrtLine); 
+							l.add((long) lineNum); 
+							l.add((long) (lineNum - predStrtLine));
+							l.add(aFile.getFilePointer()); 
+
+							predLns.add(l); 
+							curntPred = pred; 
+							predStrtLine = lineNum++; 
+
+						}
+						else
+						{
+							lineNum++;
+						}
+
+					}
+
+					if(DEBUG)
+					{
+						for(List<Long> lns : predLns)
+						{
+							System.out.print("( ");
+							for(long l : lns)
 							{
-								System.out.print(lns + ",");
+								System.out.print(l + ",");
 							}
+							System.out.println(")");
 						}
 					}
-					else
-					{
-						while ((line = reader.readLine()) != null) 
-						{
-							// Let's read the file and distribute the triples based on pred hash.
-							String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
-							if(pred.startsWith("<") && pred.endsWith(">"))
-							{
-								int partition = (Math.abs(pred.substring(1, pred.length() - 1).hashCode()) % numPartitions);
-								emit(files[partition],line);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} 
+			}//end for
 
-								if(DEBUG)
-								{
-									System.out.println(partition + ": " + line);
-								}
-							}
-							else
-							{
-								System.err.println("Invalid predicate \n " + line + ", skip.");
-								continue;
-							}
-						}//end while
-					}//end else
-				
-			} catch (IOException e) {
-				System.err.println("ERROR: Failed to read the file " + path);
-				e.printStackTrace();
+			//Let's distribute these!
+			partitionMap = new boolean[serverCap.length][predLns.size()];
+			if(!pack(0, predLns))
+			{
+				System.err.println("No solution");
+
 			}
-			
+			else
+			{
+
+			}
 		}
+		else
+		{
+			for(int i = 0 ; i < args.length; i++)
+			{
+				Path path = Paths.get(args[i]); 
+				try (BufferedReader reader = Files.newBufferedReader(path , StandardCharsets.UTF_8)){
+					String line = null;
+					while ((line = reader.readLine()) != null) 
+					{
+						// Let's read the file and distribute the triples based on pred hash.
+						String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
+						if(pred.startsWith("<") && pred.endsWith(">"))
+						{
+							int partition = (Math.abs(pred.substring(1, pred.length() - 1).hashCode()) % numPartitions);
+							emit(files[partition],line);
+
+							if(DEBUG)
+							{
+								System.out.println(partition + ": " + line);
+							}
+						}
+						else
+						{
+							System.err.println("Invalid predicate \n " + line + ", skip.");
+							continue;
+						}
+					}//end while
+
+				} catch (IOException e) {
+					System.err.println("ERROR: Failed to read the file " + path);
+					e.printStackTrace();
+				}
+
+			}//end for
+		}//end else
 	}
 
-	
+
+
+	public static boolean pack(int elementIndex, List<List<Long>> elements)
+	{ 
+		// output the solution if we're done
+		if (elementIndex == elements.size())
+		{
+			if(DEBUG)
+			{
+				for (int i = 0; i < serverCap.length; i++)
+				{
+					System.out.println("bag" + i);
+					for (int j = 0; j < elements.size(); j++)
+						if (partitionMap[i][j])
+							System.out.print("item" + j + "(" + elements.get(j).get(2) + ") ");
+					System.out.println(); 
+				}
+			}
+			return true;
+		}
+
+		// otherwise, keep traversing the state tree
+		for (int i = 0; i < serverCap.length; i++)
+		{
+			if (serverCap[i] >= elements.get(elementIndex).get(2))
+			{
+				partitionMap[i][elementIndex] = true; // put item into bag
+				serverCap[i] -= elements.get(elementIndex).get(2);
+				if (pack(elementIndex + 1, elements))                 // explore subtree
+					return true;
+				serverCap[i] += elements.get(elementIndex).get(2);  // take item out of the bag
+				partitionMap[i][elementIndex] = false;
+			}
+		}
+
+		return false;
+
+	}
+
+
+
+
+
+
 	/**************************************************************************
 	 * Notes: 
 	 * graph file: is the partition representation of the graph. i.e which cluster each node(entity) is 
@@ -178,9 +275,9 @@ public class Partitioner {
 		System.out.println(" -op, --own p      : use our custom partitioning and create p partitions");
 		System.out.println(" -h, --help        : print this help and exit");
 	}
-	
-	
-	
+
+
+
 	/***************************************************************************
 	 * @param pw
 	 * @param line
@@ -191,66 +288,89 @@ public class Partitioner {
 
 
 	public static void main(String[] args) {
-		
-//		if (args.length < 3)
-//		{
-//			usage();
-//			System.exit(1);
-//		}
-//		
-//		for (int i = 0; i < args.length; i++) {
-//			
-//			if(args[i].equalsIgnoreCase("-hp") || args[i].equalsIgnoreCase("--hash") )
-//			{
-//				useHashPartitioning = true; 
-//
-//				if (args.length<i+2)
-//				{
-//					usage();
-//					System.exit(1);
-//				}
-//
-//				numPartitions = Integer.valueOf(args[++i]);
-//			}
-//			else if(args[i].equalsIgnoreCase("-op") || args[i].equalsIgnoreCase("--own") )
-//			{
-//				useHashPartitioning = false; 
-//
-//				if (args.length<i+2)
-//				{
-//					usage();
-//					System.exit(1);
-//				}
-//
-//				numPartitions = Integer.valueOf(args[++i]);
-//			}
-//			else if (args[i].startsWith("-"))
-//			{
-//				usage();
-//				System.exit(1);
-//			}
-//			else
-//			{
-//				System.out.println("--------------------------------------------------------");
-//				//String s[] = {"University1_1.Short.SR.PREP.nt"}; 
-//				for(String str :findDistinctPredicates(Arrays.copyOfRange(args, i, args.length)).toArray(new String[0]))
-//				{
-//					System.out.println(str + " p = " + Math.abs(str.hashCode())%numPartitions);
-//					
-//				}
-//				
-//				partition(Arrays.copyOfRange(args, i, args.length));
-//			}			
-//		}
-		
-		
-		
-		
-		
-		
-		
-		
-		
+
+		if (args.length < 3)
+		{
+			usage();
+			System.exit(1);
+		}
+
+		for (int i = 0; i < args.length; i++) {
+
+			if(args[i].equalsIgnoreCase("-hp") || args[i].equalsIgnoreCase("--hash") )
+			{
+				useHashPartitioning = true; 
+
+				if (args.length<i+2)
+				{
+					usage();
+					System.exit(1);
+				}
+
+				numPartitions = Integer.valueOf(args[++i]);
+			}
+			else if(args[i].equalsIgnoreCase("-op") || args[i].equalsIgnoreCase("--own") )
+			{
+				useHashPartitioning = false; 
+
+				if (args.length<i+2)
+				{
+					usage();
+					System.exit(1);
+				}
+
+				numPartitions = Integer.valueOf(args[++i]);
+			}
+			else if (args[i].startsWith("-"))
+			{
+				usage();
+				System.exit(1);
+			}
+			else
+			{
+				/*System.out.println("--------------------------------------------------------");
+				//String s[] = {"University1_1.Short.SR.PREP.nt"}; 
+				for(String str :findDistinctPredicates(Arrays.copyOfRange(args, i, args.length)).toArray(new String[0]))
+				{
+					System.out.println(str + " p = " + Math.abs(str.hashCode())%numPartitions);
+
+				}*/
+
+				partition(Arrays.copyOfRange(args, i, args.length));
+			}			
+		}
+
+
+
+		/*RandomAccessFile aFile;
+		String line = null;
+		try {
+			aFile = new RandomAccessFile("University1_1.SR.nt", "r");
+
+			for(int i = 0 ; i < 4; i++)
+			{
+				aFile.readLine(); 
+
+			}
+			long pos = aFile.getFilePointer(); 
+			line = aFile.readLine(); 
+			System.out.println("Byte Pos: " + pos + " line: " + line);
+
+			aFile.seek(pos);
+			System.out.println("Byte Pos: " + pos + " line: " + aFile.readLine());
+
+
+
+
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+
+
+
+
 	}
 
 
