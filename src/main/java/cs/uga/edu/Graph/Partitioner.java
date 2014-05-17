@@ -84,8 +84,11 @@ public class Partitioner {
 	 */
 	public static void partition(String[] args)
 	{
+		if(numPartitions != serverCap.length)
+			return; 
+		
 		// Getting ready to write triples to each partition file.
-		final PrintWriter files[]=new PrintWriter[numPartitions];
+		final PrintWriter files[] = new PrintWriter[numPartitions];
 		try
 		{
 			for (int i = 0; i < numPartitions; i++)
@@ -106,7 +109,10 @@ public class Partitioner {
 			for(int i = 0 ; i < args.length; i++)
 			{
 				int predStrtLine = 1;   //Current Predicate Start Line.
+				long predStrtBytePos = 0;
+				
 				int lineNum = 1;
+				long lineBytePos = 0;
 
 				String line = null; 
 				String curntPred = null; 
@@ -119,6 +125,7 @@ public class Partitioner {
 							System.out.println(line);
 
 						String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
+						
 
 						if(curntPred == null)
 						{
@@ -130,19 +137,27 @@ public class Partitioner {
 						else if(curntPred != null && !curntPred.equalsIgnoreCase(pred))
 						{
 							List<Long> l = new ArrayList<>();
+							/*
+							 * We are recording start position of each predicate.
+							 * For the first predicate starting byte position is 0. 
+							 */
+
 							l.add((long) predStrtLine); 
-							l.add((long) lineNum); 
-							l.add((long) (lineNum - predStrtLine));
-							l.add(aFile.getFilePointer()); 
+							l.add((long) lineNum -1); 
+							l.add((long) (lineNum - predStrtLine ));
+							l.add(predStrtBytePos); 
 
 							predLns.add(l); 
 							curntPred = pred; 
+							predStrtBytePos = lineBytePos; 
 							predStrtLine = lineNum++; 
 
 						}
 						else
 						{
 							lineNum++;
+							lineBytePos = aFile.getFilePointer();
+							
 						}
 
 					}
@@ -174,6 +189,46 @@ public class Partitioner {
 			}
 			else
 			{
+				System.out.println("Distributing triples ....");
+				// This is where the distribution happens.
+				//TODO: we will need to fix this later.
+				RandomAccessFile aFile; 
+				try {
+					aFile = new RandomAccessFile(args[0], "r");
+				
+				
+				for (int i = 0; i < serverCap.length; i++)
+				{
+					if(DEBUG) 
+						System.out.println("bag" + i);
+					
+					for (int j = 0; j < predLns.size(); j++)
+						if (partitionMap[i][j])
+						{
+							if(DEBUG)
+								System.out.print("item" + j + "(" + predLns.get(j).get(2) + ") ");
+							//Now lets. write to these files we opened!
+							aFile.seek(predLns.get(j).get(3));
+							StringBuilder sb = new StringBuilder();
+							
+							System.out.println(predLns.get((j+1)).get(3));
+							while(aFile.getFilePointer() < ( j < predLns.size() -1 ? predLns.get((j+1)).get(3) : aFile.length()))
+							{
+								sb.append(aFile.readLine()).append("\n"); 
+							}
+							
+							if(DEBUG)
+							{
+								System.out.println(sb.toString());
+							}
+						}
+					System.out.println(); 
+				}
+				
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 
 			}
 		}
@@ -221,6 +276,7 @@ public class Partitioner {
 		// output the solution if we're done
 		if (elementIndex == elements.size())
 		{
+			// This is just printing the result.
 			if(DEBUG)
 			{
 				for (int i = 0; i < serverCap.length; i++)
@@ -253,11 +309,6 @@ public class Partitioner {
 
 	}
 
-
-
-
-
-
 	/**************************************************************************
 	 * Notes: 
 	 * graph file: is the partition representation of the graph. i.e which cluster each node(entity) is 
@@ -275,8 +326,6 @@ public class Partitioner {
 		System.out.println(" -op, --own p      : use our custom partitioning and create p partitions");
 		System.out.println(" -h, --help        : print this help and exit");
 	}
-
-
 
 	/***************************************************************************
 	 * @param pw
@@ -328,13 +377,13 @@ public class Partitioner {
 			}
 			else
 			{
-				/*System.out.println("--------------------------------------------------------");
+				System.out.println("--------------------------------------------------------");
 				//String s[] = {"University1_1.Short.SR.PREP.nt"}; 
 				for(String str :findDistinctPredicates(Arrays.copyOfRange(args, i, args.length)).toArray(new String[0]))
 				{
 					System.out.println(str + " p = " + Math.abs(str.hashCode())%numPartitions);
 
-				}*/
+				}
 
 				partition(Arrays.copyOfRange(args, i, args.length));
 			}			
@@ -347,6 +396,7 @@ public class Partitioner {
 		try {
 			aFile = new RandomAccessFile("University1_1.SR.nt", "r");
 
+			long temp = aFile.getFilePointer();
 			for(int i = 0 ; i < 4; i++)
 			{
 				aFile.readLine(); 
@@ -368,8 +418,30 @@ public class Partitioner {
 			e.printStackTrace();
 		}*/
 
-
-
+		/*
+		 * ( 1,209,209,0,)
+		 * ( 210,246,37,30134,)
+		 * ( 247,247,1,34709,)
+		 * ( 248,284,37,34709,)
+		 * ( 285,870,586,39363,)
+		 * ( 871,1570,700,114748,)
+		 * ( 1571,1582,12,230110,)
+		 * ( 1583,3230,1648,231644,)
+		 * ( 3231,3339,109,465515,)
+		 * ( 3340,3366,27,480498,)
+		 * ( 3367,3518,152,484381,)
+		 */
+	/*	RandomAccessFile aFile;
+		String line = null;
+		try {
+			aFile = new RandomAccessFile("University1_1.SR.PREP.nt", "r");
+			aFile.seek((long)30134);
+			System.out.println(aFile.readLine());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+*/
 
 	}
 
