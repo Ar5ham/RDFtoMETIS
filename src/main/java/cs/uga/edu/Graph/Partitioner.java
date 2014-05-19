@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.sun.org.apache.bcel.internal.classfile.LineNumber;
+
 import javafarm.demo.Sysout;
 
 public class Partitioner {
@@ -108,60 +110,73 @@ public class Partitioner {
 
 			for(int i = 0 ; i < args.length; i++)
 			{
-				int predStrtLine = 1;   //Current Predicate Start Line.
-				long predStrtBytePos = 0;
-				
-				int lineNum = 1;
-				long lineBytePos = 0;
-
-				String line = null; 
-				String curntPred = null; 
 				try {
 
 					RandomAccessFile aFile = new RandomAccessFile(args[i], "r");
-					while((line = aFile.readLine()) != null)
+					if(aFile.length() == 0)
+						return;
+					
+					String line = null; 
+					String curntPred = null; 
+					int  predStrtLine = 1;
+					long predStrtByte = 0; 
+					
+					int lineNum = 1;
+					
+					while(aFile.getFilePointer() != aFile.length())
 					{
-						if(DEBUG)
-							System.out.println(line);
-
+						long fp = aFile.getFilePointer(); 
+						line = aFile.readLine(); 
 						String pred = line.substring(0, line.length() - 1).trim().split("\\s+")[1]; 
 						
-
+						if(DEBUG)
+						{
+							if(lineNum == 3519)
+							{
+								System.out.println("---------------------------------------------------");
+								System.out.println(lineNum + ": " + fp + ": " + line);
+							}
+							else 
+								System.out.println(lineNum + ": " + fp + ": " + line);
+						}
+						
 						if(curntPred == null)
 						{
 							curntPred = pred;
-							predStrtLine = lineNum++; 
-
-
+							predStrtLine = lineNum;
+							predStrtByte = fp;
+							lineNum ++; 
 						}
-						else if(curntPred != null && !curntPred.equalsIgnoreCase(pred))
+						else if(aFile.getFilePointer() == aFile.length())
 						{
 							List<Long> l = new ArrayList<>();
-							/*
-							 * We are recording start position of each predicate.
-							 * For the first predicate starting byte position is 0. 
-							 */
-
+							l.add((long) predStrtLine); 
+							l.add((long) lineNum); 
+							l.add((long) (lineNum - predStrtLine ));
+							l.add(predStrtByte); 
+							predLns.add(l); 
+						}
+						else if(curntPred != null && !curntPred.equalsIgnoreCase(pred) )
+						{
+							List<Long> l = new ArrayList<>();
 							l.add((long) predStrtLine); 
 							l.add((long) lineNum -1); 
 							l.add((long) (lineNum - predStrtLine ));
-							l.add(predStrtBytePos); 
-
+							l.add(predStrtByte); 
+							
 							predLns.add(l); 
+							
+							predStrtLine = lineNum;
 							curntPred = pred; 
-							predStrtBytePos = lineBytePos; 
-							predStrtLine = lineNum++; 
-
+							predStrtByte = fp; 
+							lineNum++; 
 						}
 						else
 						{
-							lineNum++;
-							lineBytePos = aFile.getFilePointer();
-							
+							lineNum ++ ; 
 						}
-
-					}
-
+					}// end while
+					
 					if(DEBUG)
 					{
 						for(List<Long> lns : predLns)
@@ -174,6 +189,7 @@ public class Partitioner {
 							System.out.println(")");
 						}
 					}
+
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -196,32 +212,53 @@ public class Partitioner {
 				try {
 					aFile = new RandomAccessFile(args[0], "r");
 				
-				
 				for (int i = 0; i < serverCap.length; i++)
 				{
 					if(DEBUG) 
-						System.out.println("bag" + i);
+						System.out.println("Partition" + i);
 					
+//					StringBuilder sb = new StringBuilder();
 					for (int j = 0; j < predLns.size(); j++)
+					{
 						if (partitionMap[i][j])
 						{
 							if(DEBUG)
 								System.out.print("item" + j + "(" + predLns.get(j).get(2) + ") ");
 							//Now lets. write to these files we opened!
 							aFile.seek(predLns.get(j).get(3));
-							StringBuilder sb = new StringBuilder();
 							
-							System.out.println(predLns.get((j+1)).get(3));
-							while(aFile.getFilePointer() < ( j < predLns.size() -1 ? predLns.get((j+1)).get(3) : aFile.length()))
+							StringBuilder sb = new StringBuilder();
+							while(aFile.getFilePointer() < ( j == predLns.size() -1 ?  aFile.length() :predLns.get((j+1)).get(3) ))
 							{
-								sb.append(aFile.readLine()).append("\n"); 
+								emit(files[i], aFile.readLine()); 
 							}
+
 							
 							if(DEBUG)
 							{
 								System.out.println(sb.toString());
+								//emit(files[i], sb.toString() ); 
 							}
+							
+							/*if(DEBUG)
+							{
+								if(j == predLns.size() -1)
+								{
+									System.out.println(aFile.length());
+								}
+								else
+								{
+									System.out.println(predLns.get((j+1)).get(3)); 
+								}
+							}
+							 */
+							
 						}
+					}
+					
+					System.out.println("Writing to partition " + i + ": " );
+//					emit(files[i], sb.toString() ); 
+					
 					System.out.println(); 
 				}
 				
@@ -394,7 +431,7 @@ public class Partitioner {
 		/*RandomAccessFile aFile;
 		String line = null;
 		try {
-			aFile = new RandomAccessFile("University1_1.SR.nt", "r");
+			aFile = new RandomAccessFile("University1_1.SR.PREP.nt", "r");
 
 			long temp = aFile.getFilePointer();
 			for(int i = 0 ; i < 4; i++)
@@ -431,17 +468,33 @@ public class Partitioner {
 		 * ( 3340,3366,27,480498,)
 		 * ( 3367,3518,152,484381,)
 		 */
-	/*	RandomAccessFile aFile;
+		/*RandomAccessFile aFile;
 		String line = null;
+		int lineNum = 1; 
 		try {
 			aFile = new RandomAccessFile("University1_1.SR.PREP.nt", "r");
-			aFile.seek((long)30134);
-			System.out.println(aFile.readLine());
+			System.out.println("File Size: " + aFile.length());
+		
+			while (aFile.getFilePointer() < aFile.length())
+			{
+				long fp = aFile.getFilePointer(); 
+				line = aFile.readLine();
+				if(lineNum == 3519)
+				{
+					System.out.println("---------------------------------------------------");
+					System.out.println(lineNum + ": " + fp + ": " + line);
+				}
+				else 
+					System.out.println(lineNum + ": " + fp + ": " + line);
+				
+				lineNum++;
+			}
+			System.out.println(aFile.getFilePointer() + " = " + aFile.length());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-*/
+		}*/
+
 
 	}
 
