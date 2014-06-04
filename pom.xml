@@ -20,6 +20,12 @@
 			<name>Luc Hogie Maven repository</name>
 			<url>http://www.i3s.unice.fr/~hogie/maven_repository/</url>
 		</repository>
+		<repository>
+			<id>local-project-libraries</id>
+			<name>Local project libraries</name>
+			<url>file://${project.basedir}/lib</url>
+			<layout>default</layout>
+		</repository>
 	</repositories>
 
 	<dependencies>
@@ -32,8 +38,9 @@
 		<!-- Create dependency on jena-tdb, which will pull in the other artifacts -->
 		<dependency>
 			<groupId>org.apache.jena</groupId>
-			<artifactId>jena-tdb</artifactId>
-			<version>1.0.0</version>
+			<artifactId>apache-jena-libs</artifactId>
+			<type>pom</type>
+			<version>2.11.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.jdbm</groupId>
@@ -56,4 +63,5 @@
 			<version>1.4.17</version>
 		</dependency>
 	</dependencies>
+	
 </project>
