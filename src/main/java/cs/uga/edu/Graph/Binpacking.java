@@ -13,10 +13,10 @@ public class Binpacking {
         {
             for (int i = 0; i < bagFreeSpace.length; i++)
             {
-                System.out.println("bag" + i);
+                System.out.println("bag_" + i + ":");
                 for (int j = 0; j < itemSize.length; j++)
                     if (doesBagContainItem[i][j])
-                    	 System.out.print("item" + j + "(" + itemSize[j] + ") ");
+                    	 System.out.print("item_" + j + "(" + itemSize[j] + ") ");
                 System.out.println(); 
             }
             return true;
@@ -29,8 +29,10 @@ public class Binpacking {
             {
                 doesBagContainItem[i][item] = true; // put item into bag
                 bagFreeSpace[i] -= itemSize[item];
+               
                 if (pack(item + 1))                 // explore subtree
                     return true;
+                
                 bagFreeSpace[i] += itemSize[item];  // take item out of the bag
                 doesBagContainItem[i][item] = false;
             }
@@ -41,7 +43,7 @@ public class Binpacking {
     }
 
 	public static void main(String[] args) {
-		itemSize = new int[] { 209, 37,1,586,700,12,1648,109,27,152 };
+		itemSize = new int[] { 209, 37,1,37,586,700,12,1648,109,27,152 };
         bagFreeSpace = new int[] { 1000, 2000, 2000, 2000 };
         doesBagContainItem = new boolean[bagFreeSpace.length][itemSize.length];
 

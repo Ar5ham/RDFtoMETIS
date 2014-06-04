@@ -83,8 +83,16 @@ if [ -z "$IN_FILE" ] || [ -z "$OUT_FILE" ] || [ -z  "$PAT_FILE" ]; then
 	Usage "$0"
 	exit 1;
 else
-	grep -vf $PAT_FILE $IN_FILE |  egrep '.*\ .*\ (<|_)' | sort --field-separator=' ' -k2 -k1> $OUT_FILE 
- 	#echo "------ Got to the code!!!! FINALLY!------- "
+	#Extracting schema declarations and save it to schmea file
+	#SCH_FILE="${OUT_FILE%.*}.SCHEMA.nt "
+ 	#echo "SCH_FILE: $SCH_FILE"
+	#grep -f $PAT_FILE $IN_FILE |egrep -v '(<file:)'|sort --field-separator=' ' -k1 -k2|uniq >$SCH_FILE
+	
+	#Extracting triples (with litteral on the Object Size)
+	#grep -vf $PAT_FILE $IN_FILE |sort --field-separator=' ' -k2 -k1> $OUT_FILE 	
+
+	#grep -vf $PAT_FILE $IN_FILE |  egrep '.*\ .*\ (<|_)' | sort --field-separator=' ' -k2 -k1> $OUT_FILE  
+	#echo "------ Got to the code!!!! FINALLY!------- "
 fi
 
 

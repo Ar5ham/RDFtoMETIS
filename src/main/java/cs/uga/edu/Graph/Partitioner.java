@@ -12,9 +12,11 @@ package cs.uga.edu.Graph;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
+import java.io.Writer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -27,15 +29,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.sun.org.apache.bcel.internal.classfile.LineNumber;
-
-import javafarm.demo.Sysout;
-
 public class Partitioner {
 
 	private static int 	   numPartitions 		= 3;
 	private static boolean useHashPartitioning  = true;
-	private final static int [] serverCap = {1000, 2000, 2000, 2000};
+	private final static int [] serverCap = {600000, 600000, 600000, 600000};
 	private static boolean[][] partitionMap;
 
 
@@ -90,11 +88,12 @@ public class Partitioner {
 			return; 
 		
 		// Getting ready to write triples to each partition file.
-		final PrintWriter files[] = new PrintWriter[numPartitions];
+		final Writer files[] = new Writer[numPartitions];
 		try
 		{
+			
 			for (int i = 0; i < numPartitions; i++)
-				files[i] = new PrintWriter(new File("part"+i+".n3"),"UTF-8");	
+				files[i] = new FileWriter(new File("part"+i+".n3"));	
 		}
 		catch(Exception e)
 		{
@@ -131,13 +130,7 @@ public class Partitioner {
 						
 						if(DEBUG)
 						{
-							if(lineNum == 3519)
-							{
-								System.out.println("---------------------------------------------------");
-								System.out.println(lineNum + ": " + fp + ": " + line);
-							}
-							else 
-								System.out.println(lineNum + ": " + fp + ": " + line);
+							System.out.println(lineNum + ": " + fp + ": " + line);
 						}
 						
 						if(curntPred == null)
@@ -152,7 +145,7 @@ public class Partitioner {
 							List<Long> l = new ArrayList<>();
 							l.add((long) predStrtLine); 
 							l.add((long) lineNum); 
-							l.add((long) (lineNum - predStrtLine ));
+							l.add((long) (++lineNum - predStrtLine ));
 							l.add(predStrtByte); 
 							predLns.add(l); 
 						}
@@ -217,29 +210,31 @@ public class Partitioner {
 					if(DEBUG) 
 						System.out.println("Partition" + i);
 					
-//					StringBuilder sb = new StringBuilder();
+					StringBuilder sb = new StringBuilder();
 					for (int j = 0; j < predLns.size(); j++)
 					{
 						if (partitionMap[i][j])
 						{
 							if(DEBUG)
-								System.out.print("item" + j + "(" + predLns.get(j).get(2) + ") ");
+								System.out.print("part_" + j + "(" + predLns.get(j).get(2) + ") ");
 							//Now lets. write to these files we opened!
 							aFile.seek(predLns.get(j).get(3));
 							
-							StringBuilder sb = new StringBuilder();
+//							StringBuilder sb = new StringBuilder();
 							while(aFile.getFilePointer() < ( j == predLns.size() -1 ?  aFile.length() :predLns.get((j+1)).get(3) ))
 							{
-								emit(files[i], aFile.readLine()); 
+								sb.append(aFile.readLine()).append("\n"); 
 							}
 
 							
-							if(DEBUG)
-							{
-								System.out.println(sb.toString());
-								//emit(files[i], sb.toString() ); 
-							}
+//							if(DEBUG)
+//							{
+//								System.out.println(sb.toString());
+//								//emit(files[i], sb.toString() ); 
+//							}
 							
+//							files[i].write(sb.toString());
+//							files[i].flush(); 
 							/*if(DEBUG)
 							{
 								if(j == predLns.size() -1)
@@ -257,7 +252,9 @@ public class Partitioner {
 					}
 					
 					System.out.println("Writing to partition " + i + ": " );
-//					emit(files[i], sb.toString() ); 
+					emit(files[i], sb.toString() ); 
+//					files[i].flush(); 
+//					files[i].close(); 
 					
 					System.out.println(); 
 				}
@@ -371,6 +368,20 @@ public class Partitioner {
 	private static void emit(PrintWriter pw, String line) {
 		pw.println(line); 
 	}
+	
+	/***************************************************************************
+	 * This method writes the string in to a file. If you are not planning to use
+	 * the writer after ward you should flush and close the Writer object.
+	 * @param w
+	 * @param line
+	 * @throws IOException
+	 */
+	private static void emit(Writer w, String line) throws IOException
+	{
+		w.write(line); 
+		w.flush();
+		w.close();
+	}
 
 
 	public static void main(String[] args) {
@@ -414,13 +425,13 @@ public class Partitioner {
 			}
 			else
 			{
-				System.out.println("--------------------------------------------------------");
-				//String s[] = {"University1_1.Short.SR.PREP.nt"}; 
-				for(String str :findDistinctPredicates(Arrays.copyOfRange(args, i, args.length)).toArray(new String[0]))
-				{
-					System.out.println(str + " p = " + Math.abs(str.hashCode())%numPartitions);
-
-				}
+//				System.out.println("--------------------------------------------------------");
+//				//String s[] = {"University1_1.Short.SR.PREP.nt"}; 
+//				for(String str :findDistinctPredicates(Arrays.copyOfRange(args, i, args.length)).toArray(new String[0]))
+//				{
+//					System.out.println(str + " p = " + Math.abs(str.hashCode())%numPartitions);
+//
+//				}
 
 				partition(Arrays.copyOfRange(args, i, args.length));
 			}			
