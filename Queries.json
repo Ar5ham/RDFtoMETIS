@@ -1,0 +1,26 @@
+[
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>  
+PREFIX ub: <http://cs.uga.edu#> 
+SELECT *  
+FROM <http://www.cs.uga.edu#> 
+WHERE 
+{ 
+ ?x a ub:GraduateStudent . 
+ ?x ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> 
+}", 
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>  
+PREFIX ub: <http://cs.uga.edu#> 
+SELECT *  
+FROM <http://www.cs.uga.edu#> 
+WHERE 
+{ 
+    ?x a ub:GraduateStudent .  
+    ?y a  ub:University .  
+    ?z a ub:Department .  
+    ?x ub:memberOf ?z .  
+    ?z ub:subOrganizationOf ?y .  
+ }"
+
+]
