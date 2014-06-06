@@ -4,38 +4,34 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafarm.demo.Sysout;
+import virtuoso.jena.driver.VirtGraph;
+import virtuoso.jena.driver.VirtuosoQueryExecutionFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
-import com.hp.hpl.jena.query.Query;
-import com.hp.hpl.jena.query.QueryFactory;
+import com.hp.hpl.jena.query.QueryExecution;
 import com.hp.hpl.jena.query.QuerySolution;
 import com.hp.hpl.jena.query.ResultSet;
-import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.InfModel;
 
 import cs.uga.edu.util.VirtuosoJenaDAO;
-import virtuoso.jena.driver.VirtGraph;
-import virtuoso.jena.driver.VirtuosoQueryExecution;
-import virtuoso.jena.driver.VirtuosoQueryExecutionFactory;
 /**
  * Executes a SPARQL query against a virtuoso url and prints results.
  */
-public class VirtuosoSPARQLTest  {
-	private VirtGraph set ; 
+public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
+	private InfModel infModel; 
 	private VirtGraph vg ;
-	private VirtuosoQueryExecution vqe ; 
+	private QueryExecution vqe ; 
 
-	
+
 	public VirtuosoSPARQLTest() {
-
-		//VirtGraph set ; 
 		List<String> queries = readQueries("Queries.json"); 
-		set = new VirtGraph (VirtuosoJenaDAO.url, VirtuosoJenaDAO.user, VirtuosoJenaDAO.pass);
+		
+		infModel = getInfModel("inft", "http://www.cs.uga.edu#"); 
 		
 		for(int i = 0; i < queries.size(); i++)
 		{	
-			vqe = VirtuosoQueryExecutionFactory.create(QueryFactory.create(queries.get(i)),set) ; 
+			vqe =  VirtuosoQueryExecutionFactory.create(queries.get(i),infModel) ; 
 			ExecuteQueries(); 
 		}
 	}
@@ -45,12 +41,15 @@ public class VirtuosoSPARQLTest  {
 	{
 
 		ResultSet rs = vqe.execSelect();
+		List<String> rsv = rs.getResultVars(); 
+		
 		while (rs.hasNext()) {
 			QuerySolution result = rs.nextSolution();
-
+			
+			
 			//TODO: Do some validation?! 
 			System.out.println(result.toString()); 
-			
+		    
 			//			RDFNode s = result.get("s");
 			//			RDFNode p = result.get("p");
 			//			RDFNode o = result.get("o");
@@ -83,34 +82,33 @@ public class VirtuosoSPARQLTest  {
 	public static void main(String[] args) {
 		new VirtuosoSPARQLTest().ExecuteQueries(); 
 
-		/*String url;
-		if(args.length == 0)
-			url = "jdbc:virtuoso://128.192.62.244:1111";
-		else
-			url = args[0];
-
-					STEP 1			
-		VirtGraph set = new VirtGraph (url, "dba", "dba");
-
-					STEP 2			
-
-
-					STEP 3			
-				Select all data in virtuoso	
-		Query sparql = QueryFactory.create("SELECT * FROM <http://www.cs.uga.edu#> WHERE {?s ?p ?o } limit 100");
-
-					STEP 4			
-		VirtuosoQueryExecution vqe = VirtuosoQueryExecutionFactory.create (sparql, set);
-
-		ResultSet results = vqe.execSelect();
-		while (results.hasNext()) {
-			QuerySolution result = results.nextSolution();
-//			RDFNode graph = result.get("graph");
-			RDFNode s = result.get("s");
-			RDFNode p = result.get("p");
-			RDFNode o = result.get("o");
-			System.out.println(s + " " + p + " " + o + " . ");
-		}*/
+//		String url;
+//		if(args.length == 0)
+//			url = "jdbc:virtuoso://localhost:1111";
+//		else
+//			url = args[0];
+//
+//		//		VirtGraph vrt = new VirtGraph("http://www.cs.uga.edu#",VirtuosoJenaDAO.url ,VirtuosoJenaDAO.user, VirtuosoJenaDAO.pass ) ; 
+//
+//		VirtInfGraph infGraph  = new VirtInfGraph("inft", false, "http://www.cs.uga.edu#",VirtuosoJenaDAO.url ,VirtuosoJenaDAO.user, VirtuosoJenaDAO.pass ); 
+//		InfModel model = ModelFactory.createInfModel(infGraph);
+//
+//		String queryString = "prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE{ ?s ?p ?o} limit 10"; 
+//
+//		QueryExecution qexec =  VirtuosoQueryExecutionFactory.create(queryString, model) ;
+//
+//		try {
+//			ResultSet rs = qexec.execSelect() ;
+//			for ( ; rs.hasNext() ; ) {
+//				QuerySolution result = rs.nextSolution();
+//				RDFNode s = result.get("s");
+//				RDFNode p = result.get("p");
+//				RDFNode o = result.get("o");
+//				System.out.println("<" + s + ">  <" + p + ">  <" + o + "> . ");
+//			}
+//		} finally {
+//			qexec.close() ;
+//		}
 	}
 
 
