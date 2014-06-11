@@ -26,8 +26,8 @@ public class VirtuosoJenaDAO {
 	 * 
 	 */
 	public VirtuosoJenaDAO() {
-		//this.url = "jdbc:virtuoso://localhost:1111";
-		this.url = "jdbc:virtuoso://128.192.62.244:1111";
+		//this.url = "jdbc:virtuoso://128.192.62.244:1111";
+		this.url = "jdbc:virtuoso://localhost:1111";
 	}
 
 	/**

@@ -29,7 +29,9 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 	public VirtuosoSPARQLTest() {
 		List<String> queries = readQueries("Queries.json"); 
 		
-		infModel = getInfModel("inft", "http://www.cs.uga.edu#"); 
+		//infModel = getInfModel("inft", "http://www.cs.uga.edu#"); 
+		
+		VirtGraph infModel = getVirtGraph(); 
 		
 		for(int i = 0; i < queries.size(); i++)
 		{	
@@ -42,7 +44,7 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 			try {
 				ExecuteQueries(); 
 			} catch (Exception e) {
-				System.err.println("Could not execute the query + q");
+				System.err.println("Could not execute the query " + q);
 			}
 			
 		}
@@ -66,14 +68,14 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 			System.out.println("Time elapsed: " + difference);
 		}
 		
-//		while (rs.hasNext()) {
-//			QuerySolution result = rs.nextSolution();
-//			
-//			
-//			//TODO: Do some validation?! 
+		while (rs.hasNext()) {
+			QuerySolution result = rs.nextSolution();
+			
+			
+			//TODO: Do some validation?! 
 //			List<String> rsv = rs.getResultVars(); 
-//			System.out.println(result.toString()); 
-//		}
+			System.out.println(result.toString()); 
+		}
 
 	}
 
