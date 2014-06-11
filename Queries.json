@@ -8,9 +8,5 @@
 "prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE { ?x a ub:Student . ?y a ub:Course . <http://www.Department0.University0.edu/AssociateProfessor0> ub:teacherOf ?y . ?x ub:takesCourse ?y .}",
 "prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE {?x a ub:Student . ?y a ub:Department . ?x ub:memberOf ?y . ?y ub:subOrganizationOf <http://www.University0.edu> . ?x ub:emailAddress ?z }",
 "prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE{ ?x a ub:Student . ?y a ub:Faculty . ?z a ub:Course . ?x ub:advisor ?y . ?x ub:takesCourse ?z . ?y ub:teacherOf ?z .}",
-"prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE{ ?x a ub:Student . ?x ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> .}",
-"",
-"",
-"",
-"",
-]
+"prefix ub: <http://cs.uga.edu#> select * FROM <http://www.cs.uga.edu#> WHERE{ ?x a ub:Student . ?x ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0> .}"
+];
