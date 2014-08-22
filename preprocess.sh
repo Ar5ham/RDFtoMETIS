@@ -1,7 +1,5 @@
  #!/bin/bash
 
- # grep -vf: -v: invert match -f: Pattern file 
- # egrep 
  #grep -vf blackList.txt University1_1.SR.nt | egrep '.*\ .*\ (<|_)' |sort | less
 
 function Usage {
@@ -17,8 +15,8 @@ function Usage {
 	echo -e "\t\t  Obtain N-Triples from input file."
 	echo -e "\t -o FILE --output FILE"
 	echo -e "\t\t Write the resulting Triples in to the output file"
-	echo -e "\t -pf FILE"
-	echo -e "\t\t Obtain patterns from FILE, one per line.  The empty file contains zero patterns, and therefore matches nothing."
+	#echo -e "\t -pf FILE"
+	#echo -e "\t\t Obtain patterns from FILE, one per line.  The empty file contains zero patterns, and therefore matches nothing."
 }
 
 
@@ -61,38 +59,33 @@ while [ $# -gt 0 ]; do
 		fi
 		shift
 		;;
-		-pf|--pattern_file)
-		shift
-		if [ $# -gt 0 ]; then
-			PAT_FILE="$1"
-		else
-			echo "Error: No pattern file specified"
-			exit 1
-		fi
-		shift 
-		;;
+		#-pf|--pattern_file)
+		#shift
+		#if [ $# -gt 0 ]; then
+		#	PAT_FILE="$1"
+		#else
+		#	echo "Error: No pattern file specified"
+		#	exit 1
+		#fi
+		#shift 
+		#;;
 	esac
 	 
 done
 
 echo "IN_FILE: $IN_FILE"
 echo "OUT_FILE: $OUT_FILE"
-echo "PAT_FILE: $PAT_FILE"
+#echo "PAT_FILE: $PAT_FILE"
 
-if [ -z "$IN_FILE" ] || [ -z "$OUT_FILE" ] || [ -z  "$PAT_FILE" ]; then
+if [ -z "$IN_FILE" ] || [ -z "$OUT_FILE" ] ; then
 	Usage "$0"
 	exit 1;
 else
-	#Extracting schema declarations and save it to schmea file
-	#SCH_FILE="${OUT_FILE%.*}.SCHEMA.nt "
- 	#echo "SCH_FILE: $SCH_FILE"
-	#grep -f $PAT_FILE $IN_FILE |egrep -v '(<file:)'|sort --field-separator=' ' -k1 -k2|uniq >$SCH_FILE
+         # Updated 7/15/2014
+	 grep -v "<file" $IN_FILE | cat |sed '$a\<file:///home/ars/workspace/uba1.7/lubm_data/10_0_Univ/'${OUT_FILE%.nt}.owl'> <http://www.w3.org/2002/07/owl#imports> <http://cs.uga.edu> .'|cat |sed '$a\<file:///home/ars/workspace/uba1.7/lubm_data/10_0_Univ/'${OUT_FILE%.nt}.owl'> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Ontology> .' | sort --buffer-size=4G --field-separator=' ' -k2 -k1 | uniq > $OUT_FILE
 	
-	#Extracting triples (with litteral on the Object Size)
-	#grep -vf $PAT_FILE $IN_FILE |sort --field-separator=' ' -k2 -k1> $OUT_FILE 	
-
 	#grep -vf $PAT_FILE $IN_FILE |  egrep '.*\ .*\ (<|_)' | sort --field-separator=' ' -k2 -k1> $OUT_FILE  
-	#echo "------ Got to the code!!!! FINALLY!------- "
+ 	echo "------ Got to the code!!!! FINALLY!------- "
 fi
 
 

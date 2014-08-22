@@ -33,7 +33,7 @@ public class Partitioner {
 
 	private static int 	   numPartitions 		= 3;
 	private static boolean useHashPartitioning  = true;
-	private final static int [] serverCap = {600000, 600000, 600000, 600000};
+	private final static int [] serverCap = {400000, 400000, 400000, 400000};
 	private static boolean[][] partitionMap;
 
 
@@ -93,7 +93,7 @@ public class Partitioner {
 		{
 			
 			for (int i = 0; i < numPartitions; i++)
-				files[i] = new FileWriter(new File("part"+i+".n3"));	
+				files[i] = new FileWriter(new File("part_"+(i + 1)+".n3"));	
 		}
 		catch(Exception e)
 		{
@@ -171,7 +171,7 @@ public class Partitioner {
 					}// end while
 					
 					if(DEBUG)
-					{
+					{	System.out.println("(startLine, finishLine, # Of Triples, starring byte position");
 						for(List<Long> lns : predLns)
 						{
 							System.out.print("( ");

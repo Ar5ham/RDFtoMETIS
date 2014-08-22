@@ -31,7 +31,7 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 		
 		//infModel = getInfModel("inft", "http://www.cs.uga.edu#"); 
 		
-		VirtGraph infModel = getVirtGraph(); 
+		infModel = getInfModel("inft", "http://www.cs.uga.edu#");
 		
 		for(int i = 0; i < queries.size(); i++)
 		{	
@@ -53,9 +53,9 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 
 	public void ExecuteQueries() throws Exception
 	{
-		long startTime = System.currentTimeMillis();
+		long startTime = System.nanoTime();
 		ResultSet rs = vqe.execSelect();
-		long endTime = System.currentTimeMillis();
+		long estimatedTime = System.nanoTime() - startTime;
 		
 		if(!rs.hasNext())
 		{
@@ -64,17 +64,24 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 		
 		if(DEBUG)
 		{
-			long difference = endTime - startTime;
-			System.out.println("Time elapsed: " + difference);
+			
+			System.out.print("Time elapsed: " + estimatedTime + "ns , " + estimatedTime /1000000000.0 + " sec, " );
 		}
 		
+		int count = 0;
 		while (rs.hasNext()) {
 			QuerySolution result = rs.nextSolution();
+			count ++;
 			
 			
 			//TODO: Do some validation?! 
 //			List<String> rsv = rs.getResultVars(); 
-			System.out.println(result.toString()); 
+			//System.out.println(result.toString()); 
+		}
+		if(DEBUG)
+		{
+			System.out.println("Triple Count: " + count);
+			
 		}
 
 	}
@@ -103,7 +110,7 @@ public class VirtuosoSPARQLTest extends VirtuosoJenaDAO  {
 	public static void main(String[] args) {
 		
 		try {
-			new VirtuosoSPARQLTest().ExecuteQueries();
+			new VirtuosoSPARQLTest();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
